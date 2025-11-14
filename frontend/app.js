@@ -483,10 +483,9 @@ function initializeLocationLookup() {
                 searchResults.innerHTML = data.results.map((county, index) => {
                     const alreadySelected = selectedCounties.some(c => c.fips === county.fips);
                     return `
-                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}" data-fips="${county.fips}" data-name="${county.name}" data-state="${county.state}" data-index="${index}">
+                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}" data-fips="${county.fips}" data-name="${county.name}" data-state="${county.state}">
                             ${county.name}, ${county.state} <span class="fips-code">(${county.fips})</span>
                         </div>
-                        <div id="subdivision-selector-${index}" class="subdivision-selector hidden"></div>
                     `;
                 }).join('');
 
@@ -508,7 +507,7 @@ function initializeLocationLookup() {
                             searchResults.classList.add('hidden');
                         } else {
                             // Text search - show subdivision selector
-                            showSubdivisionSelector(item.dataset.index, {
+                            showSubdivisionSelector({
                                 fips: item.dataset.fips,
                                 name: item.dataset.name,
                                 state: item.dataset.state
@@ -525,15 +524,19 @@ function initializeLocationLookup() {
     });
 
     // Close results when clicking outside
+    const subdivisionContainer = document.getElementById('subdivision-selector-container');
     document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        if (!searchInput.contains(e.target) &&
+            !searchResults.contains(e.target) &&
+            !subdivisionContainer.contains(e.target)) {
             searchResults.classList.add('hidden');
+            subdivisionContainer.classList.add('hidden');
         }
     });
 
     // Show subdivision selector for a county
-    function showSubdivisionSelector(index, county) {
-        const selectorDiv = document.getElementById(`subdivision-selector-${index}`);
+    function showSubdivisionSelector(county) {
+        const selectorDiv = document.getElementById('subdivision-selector-container');
 
         // Build subdivision selector HTML
         const baseFips = county.fips.substring(1); // Remove leading 0 to get base 5-digit code
@@ -560,8 +563,8 @@ function initializeLocationLookup() {
             <div class="subdivision-grid disabled">
                 ${subdivisions.map(sub => `
                     <div class="subdivision-checkbox-wrapper">
-                        <input type="checkbox" id="sub-${index}-${sub.code}" value="${sub.code}" data-name="${sub.name}">
-                        <label for="sub-${index}-${sub.code}">${sub.name}</label>
+                        <input type="checkbox" id="sub-${sub.code}" value="${sub.code}" data-name="${sub.name}">
+                        <label for="sub-${sub.code}">${sub.name}</label>
                     </div>
                 `).join('')}
             </div>
