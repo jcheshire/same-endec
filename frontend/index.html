@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAME Encoder/Decoder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SAME Encoder/Decoder</h1>
+            <p>Emergency Alert System (EAS) Message Tool</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" data-tab="encode">Encode Message</button>
+            <button class="tab-button" data-tab="decode">Decode WAV</button>
+            <button class="tab-button" data-tab="reference">Reference</button>
+        </div>
+
+        <!-- Encode Tab -->
+        <div id="encode-tab" class="tab-content active">
+            <div class="section">
+                <h2>Build SAME Message</h2>
+                <form id="encode-form">
+                    <div class="form-group">
+                        <label for="event-code">Event Code:</label>
+                        <select id="event-code" required>
+                            <option value="">Loading...</option>
+                        </select>
+                        <span class="help-text" id="event-description"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="originator">Originator:</label>
+                        <select id="originator" required>
+                            <option value="WXR">WXR - National Weather Service</option>
+                            <option value="PEP">PEP - Primary Entry Point</option>
+                            <option value="CIV">CIV - Civil Authority</option>
+                            <option value="EAS">EAS - EAS Participant</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location-codes">Location Codes (FIPS):</label>
+                        <input type="text" id="location-codes" placeholder="e.g., 024031,024033" required>
+                        <span class="help-text">Comma-separated 6-digit FIPS codes</span>
+                        <div id="location-lookup"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">Duration:</label>
+                        <input type="text" id="duration" placeholder="+0030" value="+0030" pattern="\+\d{4}" required>
+                        <span class="help-text">Format: +HHMM (e.g., +0030 for 30 minutes)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="callsign">Callsign (Optional):</label>
+                        <input type="text" id="callsign" placeholder="SCIENCE" maxlength="8">
+                        <span class="help-text">Up to 8 characters</span>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="preview-btn" class="btn btn-secondary">Preview Message</button>
+                        <button type="submit" class="btn btn-primary">Encode to WAV</button>
+                    </div>
+                </form>
+
+                <div id="preview-output" class="output-box hidden">
+                    <h3>Message Preview</h3>
+                    <pre id="preview-text"></pre>
+                </div>
+
+                <div id="encode-output" class="output-box hidden">
+                    <h3>Encoded WAV File</h3>
+                    <audio id="audio-player" controls></audio>
+                    <button id="download-btn" class="btn btn-success">Download WAV</button>
+                </div>
+            </div>
+
+            <!-- Raw Encode Section -->
+            <div class="section">
+                <h2>Encode Raw SAME String</h2>
+                <form id="raw-encode-form">
+                    <div class="form-group">
+                        <label for="raw-message">SAME Message:</label>
+                        <input type="text" id="raw-message" placeholder="ZCZC-WXR-TOR-024031+0030-3171500-SCIENCE-" required>
+                        <span class="help-text">Complete SAME protocol message</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Encode Raw Message</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Decode Tab -->
+        <div id="decode-tab" class="tab-content">
+            <div class="section">
+                <h2>Decode WAV File</h2>
+                <form id="decode-form">
+                    <div class="form-group">
+                        <label for="wav-file">Upload WAV File:</label>
+                        <input type="file" id="wav-file" accept=".wav,audio/wav" required>
+                        <span class="help-text">Max size: 10MB</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Decode</button>
+                </form>
+
+                <div id="decode-output" class="output-box hidden">
+                    <h3>Decoded Message</h3>
+                    <pre id="decode-text"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Tab -->
+        <div id="reference-tab" class="tab-content">
+            <div class="section">
+                <h2>SAME Protocol Reference</h2>
+
+                <h3>Message Format</h3>
+                <pre class="code-block">ZCZC-ORG-EEE-PSSCCC-PSSCCC+TTTT-JJJHHMM-LLLLLLLL-</pre>
+
+                <table class="reference-table">
+                    <tr>
+                        <th>Field</th>
+                        <th>Description</th>
+                        <th>Example</th>
+                    </tr>
+                    <tr>
+                        <td>ZCZC</td>
+                        <td>Header (always)</td>
+                        <td>ZCZC</td>
+                    </tr>
+                    <tr>
+                        <td>ORG</td>
+                        <td>Originator code</td>
+                        <td>WXR, PEP, CIV</td>
+                    </tr>
+                    <tr>
+                        <td>EEE</td>
+                        <td>Event code</td>
+                        <td>TOR, SVR, EAN</td>
+                    </tr>
+                    <tr>
+                        <td>PSSCCC</td>
+                        <td>Location code (6 digits, repeatable)</td>
+                        <td>024031</td>
+                    </tr>
+                    <tr>
+                        <td>+TTTT</td>
+                        <td>Duration (+HHMM)</td>
+                        <td>+0030</td>
+                    </tr>
+                    <tr>
+                        <td>JJJHHMM</td>
+                        <td>Timestamp (Julian day + time)</td>
+                        <td>3171500</td>
+                    </tr>
+                    <tr>
+                        <td>LLLLLLLL</td>
+                        <td>Callsign (max 8 chars)</td>
+                        <td>SCIENCE</td>
+                    </tr>
+                </table>
+
+                <h3>Example Message</h3>
+                <pre class="code-block">ZCZC-WXR-TOR-024031+0030-3171500-SCIENCE-</pre>
+                <p>Tornado warning for Montgomery County MD, valid 30 minutes</p>
+
+                <h3>Common Event Codes</h3>
+                <div id="event-codes-list" class="event-codes-grid">
+                    Loading event codes...
+                </div>
+            </div>
+        </div>
+
+        <div id="error-box" class="error-box hidden">
+            <span class="error-close">&times;</span>
+            <p id="error-message"></p>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
