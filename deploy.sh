@@ -18,7 +18,7 @@ SERVICE_NAME="same-endec"
 SERVICE_USER="${SUDO_USER:-$USER}"
 BACKEND_PORT=8000
 FRONTEND_PORT=8080
-USE_NGINX=false  # Set to true to use nginx reverse proxy
+USE_NGINX=true  # Set to false to run without nginx (development mode)
 
 echo -e "${GREEN}=====================================${NC}"
 echo -e "${GREEN}SAME Encoder/Decoder Deployment${NC}"
