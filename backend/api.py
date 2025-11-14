@@ -248,6 +248,31 @@ async def encode_preview(request: Request, encode_request: EncodeRequest):
         raise HTTPException(status_code=500, detail="Preview failed due to server error")
 
 
+def get_subdivision_description(subdivision_code: str) -> str:
+    """
+    Get human-readable description for SAME subdivision code
+
+    Per 47 CFR § 11.31, P defines county subdivisions:
+    0 = All or an unspecified portion of a county
+    1 = Northwest, 2 = North, 3 = Northeast
+    4 = West, 5 = Central, 6 = East
+    7 = Southwest, 8 = South, 9 = Southeast
+    """
+    subdivisions = {
+        '0': None,  # Whole county, no subdivision needed
+        '1': "Northwest portion",
+        '2': "North portion",
+        '3': "Northeast portion",
+        '4': "West portion",
+        '5': "Central portion",
+        '6': "East portion",
+        '7': "Southwest portion",
+        '8': "South portion",
+        '9': "Southeast portion"
+    }
+    return subdivisions.get(subdivision_code, None)
+
+
 def enrich_parsed_message(parsed: Dict) -> Dict:
     """
     Enrich a parsed SAME message with human-readable information
@@ -282,23 +307,30 @@ def enrich_parsed_message(parsed: Dict) -> Dict:
         cursor = conn.cursor()
         for fips in parsed["locations"]:
             # SAME uses 6-digit FIPS (PSSCCC), database uses 5-digit (SSCCC)
-            # Strip leading zeros/part digit to get state+county code
+            # P = subdivision code (0-9), SS = state, CCC = county
             fips_padded = fips.zfill(6)
-            fips_lookup = fips_padded.lstrip('0') or '0'  # Remove leading zeros, keep at least one digit
+            subdivision_code = fips_padded[0]
+            fips_lookup = fips_padded[1:].lstrip('0') or '0'  # Get last 5 digits, remove leading zeros
 
             cursor.execute('SELECT name, state FROM fips_codes WHERE fips = ? AND type = "county"', (fips_lookup,))
             row = cursor.fetchone()
+
+            # Get subdivision description
+            subdivision_desc = get_subdivision_description(subdivision_code)
+
             if row:
                 location_details.append({
                     "fips": fips_padded,
                     "name": row['name'],
-                    "state": row['state']
+                    "state": row['state'],
+                    "subdivision": subdivision_desc
                 })
             else:
                 location_details.append({
                     "fips": fips_padded,
                     "name": "Unknown",
-                    "state": "Unknown"
+                    "state": "Unknown",
+                    "subdivision": subdivision_desc
                 })
         conn.close()
         enriched["location_details"] = location_details
@@ -511,8 +543,18 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
             # Smart detection: is this a FIPS code (numeric) or county name (text)?
             if q.strip().isdigit():
                 # Numeric search - search by FIPS code
-                # Strip leading zeros from search query to match database format
-                fips_query = q.strip().lstrip('0') or '0'
+                # Handle 6-digit SAME codes (PSSCCC) by stripping first digit if present
+                fips_query = q.strip()
+                if len(fips_query) == 6:
+                    # 6-digit code: validate first digit is 0-9 (subdivision code)
+                    subdivision = fips_query[0]
+                    if subdivision not in '0123456789':
+                        raise HTTPException(status_code=400, detail="Invalid subdivision code (must be 0-9)")
+                    # Use last 5 digits for database lookup
+                    fips_query = fips_query[1:]
+
+                # Strip leading zeros from query to match database format (5-digit codes stored without leading zeros)
+                fips_query = fips_query.lstrip('0') or '0'
                 sql += ' AND fips LIKE ?'
                 # Security: % wildcards are part of the parameter value, not the SQL string,
                 # so they're properly escaped by the database driver via parameterization
@@ -537,10 +579,10 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
 
         results = [
             {
-                "fips": row['fips'],
+                "fips": '0' + row['fips'].zfill(5),  # Prepend 0 for whole county, pad to 5 digits
                 "name": row['name'],
                 "state": row['state'],
-                "display": f"{row['name']}, {row['state']} ({row['fips']})"
+                "display": f"{row['name']}, {row['state']} (0{row['fips'].zfill(5)})"
             }
             for row in rows
         ]
