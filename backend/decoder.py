@@ -259,17 +259,26 @@ class SAMEDecoder:
         result["org"] = parts[0]
         result["event"] = parts[1]
 
-        # Find duration (starts with +)
+        # Find duration (starts with + or contains +)
         duration_idx = None
         for i, part in enumerate(parts[2:], start=2):
-            if part.startswith('+'):
+            if '+' in part:
                 duration_idx = i
                 break
 
         if duration_idx:
-            # Everything between event and duration is location codes
-            result["locations"] = parts[2:duration_idx]
-            result["duration"] = parts[duration_idx]
+            # Check if location and duration are concatenated (e.g., "039039+0030")
+            location_duration_part = parts[duration_idx]
+            if '+' in location_duration_part and not location_duration_part.startswith('+'):
+                # Split on the + to separate location from duration
+                loc, dur = location_duration_part.split('+', 1)
+                # Add all previous parts as locations, plus the location from this part
+                result["locations"] = parts[2:duration_idx] + [loc] if loc else parts[2:duration_idx]
+                result["duration"] = '+' + dur
+            else:
+                # Everything between event and duration is location codes
+                result["locations"] = parts[2:duration_idx]
+                result["duration"] = parts[duration_idx]
 
             # Remaining parts are timestamp and originator
             if duration_idx + 1 < len(parts):
