@@ -90,9 +90,28 @@ setup_venv() {
     echo -e "${GREEN}Python environment configured${NC}"
 }
 
+# Initialize FIPS code database
+init_fips_db() {
+    echo -e "${GREEN}[3/7] Initializing FIPS code database...${NC}"
+
+    cd "$PROJECT_DIR/backend"
+
+    # Check if database already exists
+    if [ -f "fips_codes.db" ]; then
+        echo "FIPS database already exists, skipping initialization"
+    else
+        # Run initialization script
+        source venv/bin/activate
+        python3 init_fips_db.py
+        deactivate
+    fi
+
+    echo -e "${GREEN}FIPS database ready${NC}"
+}
+
 # Compile multimon-ng
 compile_multimon() {
-    echo -e "${GREEN}[3/7] Compiling multimon-ng decoder...${NC}"
+    echo -e "${GREEN}[4/7] Compiling multimon-ng decoder...${NC}"
 
     cd "$PROJECT_DIR/multimon-ng"
 
@@ -118,7 +137,7 @@ compile_multimon() {
 
 # Create systemd service for backend
 create_backend_service() {
-    echo -e "${GREEN}[4/7] Creating systemd service for backend...${NC}"
+    echo -e "${GREEN}[5/7] Creating systemd service for backend...${NC}"
 
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}-backend.service"
 
@@ -162,7 +181,7 @@ create_frontend_service() {
         return
     fi
 
-    echo -e "${GREEN}[5/7] Creating systemd service for frontend...${NC}"
+    echo -e "${GREEN}[6/7] Creating systemd service for frontend...${NC}"
 
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}-frontend.service"
 
@@ -201,7 +220,7 @@ configure_nginx() {
         return
     fi
 
-    echo -e "${GREEN}[5/7] Configuring nginx reverse proxy...${NC}"
+    echo -e "${GREEN}[6/7] Configuring nginx reverse proxy...${NC}"
 
     # Update nginx config with correct path
     NGINX_CONF="/etc/nginx/sites-available/${SERVICE_NAME}"
@@ -306,7 +325,7 @@ EOF
 
 # Start services
 start_services() {
-    echo -e "${GREEN}[6/7] Starting services...${NC}"
+    echo -e "${GREEN}[7/7] Starting services...${NC}"
 
     sudo systemctl start "${SERVICE_NAME}-backend.service"
 
@@ -380,6 +399,7 @@ main() {
     check_os
     install_dependencies
     setup_venv
+    init_fips_db
     compile_multimon
     create_backend_service
     configure_nginx
