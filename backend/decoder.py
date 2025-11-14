@@ -230,7 +230,7 @@ class SAMEDecoder:
                 "originator": "SCIENCE"
             }
         """
-        parts = message_string.strip().rstrip('-').split('-')
+        parts = message_string.strip().strip('-').split('-')
 
         result = {
             "org": None,
