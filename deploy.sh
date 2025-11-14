@@ -169,7 +169,7 @@ After=network.target
 Type=simple
 User=$SERVICE_USER
 WorkingDirectory=$PROJECT_DIR/backend
-Environment="PATH=$PROJECT_DIR/backend/venv/bin"
+Environment="PATH=$PROJECT_DIR/backend/venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 Environment="ALLOWED_ORIGINS=http://localhost:$FRONTEND_PORT"
 ExecStart=$PROJECT_DIR/backend/venv/bin/python api.py
