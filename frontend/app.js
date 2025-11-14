@@ -1,7 +1,9 @@
 // SAME Encoder/Decoder Frontend
 // Pure vanilla JavaScript - no external dependencies
 
-const API_BASE = 'http://localhost:8000/api';
+// Use relative URL for API calls - works with nginx reverse proxy
+// When nginx is configured, all requests to /api/* are proxied to backend
+const API_BASE = '/api';
 
 // State
 let eventCodes = {};

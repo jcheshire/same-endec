@@ -180,24 +180,53 @@ curl http://localhost:8000/api/event-codes
 
 ## Deployment
 
-### Automated Deployment (Ubuntu/Debian)
+### Quick Start with Nginx (Recommended)
 
-The included `deploy.sh` script automates the entire deployment process:
+For production deployment with nginx reverse proxy:
 
 ```bash
 # On Ubuntu server
 git clone <your-repo-url>
 cd same-endec
+
+# Edit deploy.sh and set USE_NGINX=true
+nano deploy.sh  # Change line 21: USE_NGINX=true
+
+# Run deployment
 sudo ./deploy.sh
 ```
 
-This script will:
+**After deployment:**
+1. Edit nginx config: `sudo nano /etc/nginx/sites-available/same-endec`
+2. Replace `server_name _;` with your domain (e.g., `server_name same.example.com;`)
+3. Test: `sudo nginx -t`
+4. Reload: `sudo systemctl reload nginx`
+5. Secure with Let's Encrypt: `sudo certbot --nginx -d your-domain.com`
+
+### Automated Deployment Options
+
+The `deploy.sh` script supports two modes:
+
+**Option 1: With Nginx (Production)**
+- Set `USE_NGINX=true` in deploy.sh (line 21)
+- Installs nginx, configures reverse proxy
+- Backend only listens on localhost (more secure)
+- Single port 80/443 for everything
+- No CORS issues
+
+**Option 2: Without Nginx (Development/Testing)**
+- Set `USE_NGINX=false` in deploy.sh (line 21, default)
+- Runs separate frontend service on port 8080
+- Backend on port 8000
+- Good for development/testing
+
+Both modes:
 1. Install system dependencies (build tools, cmake, Python)
 2. Set up Python virtual environment
 3. Compile multimon-ng binary
-4. Create systemd services for backend and frontend
+4. Create systemd services
 5. Enable auto-start on system reboot
-6. Start both services
+6. Start services
 
 ### Manual Deployment
 
@@ -226,12 +255,33 @@ make
 cp multimon-ng ../../bin/
 ```
 
-#### 4. Run Services
+#### 4a. Run with Nginx (Production)
 ```bash
-# Terminal 1 - Backend
+# Install and configure nginx
+sudo apt-get install -y nginx
+sudo cp nginx.conf /etc/nginx/sites-available/same-endec
+sudo ln -s /etc/nginx/sites-available/same-endec /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Update server_name in config
+sudo nano /etc/nginx/sites-available/same-endec
+
+# Test and reload nginx
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Start backend (binds to localhost only)
 cd backend
 source venv/bin/activate
 python api.py
+```
+
+#### 4b. Run without Nginx (Development)
+```bash
+# Terminal 1 - Backend (public access for testing)
+cd backend
+source venv/bin/activate
+python api.py --public
 
 # Terminal 2 - Frontend
 cd frontend

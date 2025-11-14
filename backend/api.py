@@ -350,9 +350,23 @@ async def fips_lookup(code: str):
 
 if __name__ == "__main__":
     # Run the API server
+    # Security: Bind to 127.0.0.1 when behind nginx reverse proxy
+    # Use 0.0.0.0 for direct access (development/testing)
+    import sys
+
+    # Check if --public flag is passed for direct access
+    if "--public" in sys.argv:
+        host = "0.0.0.0"
+        print("WARNING: Running with public access (0.0.0.0)")
+        print("Use nginx reverse proxy for production deployment")
+    else:
+        host = "127.0.0.1"
+        print("Running on localhost only (127.0.0.1)")
+        print("Accessible via nginx reverse proxy or direct local access")
+
     uvicorn.run(
         "api:app",
-        host="0.0.0.0",
+        host=host,
         port=8000,
         reload=True
     )
