@@ -109,6 +109,25 @@ init_fips_db() {
     echo -e "${GREEN}FIPS database ready${NC}"
 }
 
+# Generate static EOM WAV file
+generate_eom() {
+    echo -e "${GREEN}[3.5/7] Generating static EOM WAV file...${NC}"
+
+    cd "$PROJECT_DIR/backend"
+
+    # Check if EOM file already exists
+    if [ -f "../frontend/eom.wav" ]; then
+        echo "EOM WAV file already exists, skipping generation"
+    else
+        # Generate EOM file
+        source venv/bin/activate
+        python3 generate_eom.py
+        deactivate
+    fi
+
+    echo -e "${GREEN}EOM WAV file ready${NC}"
+}
+
 # Compile multimon-ng
 compile_multimon() {
     echo -e "${GREEN}[4/7] Compiling multimon-ng decoder...${NC}"
@@ -400,6 +419,7 @@ main() {
     install_dependencies
     setup_venv
     init_fips_db
+    generate_eom
     compile_multimon
     create_backend_service
     configure_nginx

@@ -68,13 +68,14 @@ class SAMEEncoder:
 
         return byte_data
 
-    def encode(self, same_message: str, output_path: Optional[str] = None) -> Union[bytes, str]:
+    def encode(self, same_message: str, output_path: Optional[str] = None, include_eom: bool = True) -> Union[bytes, str]:
         """
         Encode a SAME message into WAV audio
 
         Args:
             same_message: SAME format string (e.g., "ZCZC-WXR-TOR-024031+0030-1234567-SCIENCE-")
             output_path: Optional path to save WAV file. If None, returns bytes.
+            include_eom: Whether to include End-Of-Message (NNNN) in output. Default True.
 
         Returns:
             If output_path is provided, returns the path. Otherwise returns WAV file as bytes.
@@ -110,14 +111,15 @@ class SAMEEncoder:
             # One second silence between transmissions
             signal = np.append(signal, np.zeros(self.sample_rate))
 
-        # Transmit End-Of-Message (NNNN) 3 times
-        for _ in range(3):
-            signal = np.append(signal, self._generate_preamble())
+        # Transmit End-Of-Message (NNNN) 3 times (if requested)
+        if include_eom:
+            for _ in range(3):
+                signal = np.append(signal, self._generate_preamble())
 
-            for char in "NNNN":
-                signal = np.append(signal, self._encode_byte(char))
+                for char in "NNNN":
+                    signal = np.append(signal, self._encode_byte(char))
 
-            signal = np.append(signal, np.zeros(self.sample_rate))
+                signal = np.append(signal, np.zeros(self.sample_rate))
 
         # Convert to 16-bit PCM
         signal *= 32767
