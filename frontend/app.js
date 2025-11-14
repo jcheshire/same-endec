@@ -367,18 +367,18 @@ async function handleDecode(e) {
                 // Event information
                 html += `<div class="decode-section">`;
                 html += `<h4>Event Type</h4>`;
-                html += `<p class="decode-highlight">${p.event_description || p.event || 'Unknown'}</p>`;
+                html += `<p class="decode-highlight">${escapeHtml(p.event_description || p.event || 'Unknown')}</p>`;
                 if (p.event) {
-                    html += `<p class="decode-detail">Code: ${p.event}</p>`;
+                    html += `<p class="decode-detail">Code: ${escapeHtml(p.event)}</p>`;
                 }
                 html += `</div>`;
 
                 // Originator
                 html += `<div class="decode-section">`;
                 html += `<h4>Issued By</h4>`;
-                html += `<p>${p.org_description || p.org || 'Unknown'}</p>`;
+                html += `<p>${escapeHtml(p.org_description || p.org || 'Unknown')}</p>`;
                 if (p.org && p.org_description) {
-                    html += `<p class="decode-detail">Originator: ${p.org}</p>`;
+                    html += `<p class="decode-detail">Originator: ${escapeHtml(p.org)}</p>`;
                 }
                 html += `</div>`;
 
@@ -388,7 +388,7 @@ async function handleDecode(e) {
                     html += `<h4>Affected Areas</h4>`;
                     html += `<ul class="location-list">`;
                     p.location_details.forEach(loc => {
-                        html += `<li>${loc.name}, ${loc.state} <span class="fips-code">(${loc.fips})</span></li>`;
+                        html += `<li>${escapeHtml(loc.name)}, ${escapeHtml(loc.state)} <span class="fips-code">(${escapeHtml(loc.fips)})</span></li>`;
                     });
                     html += `</ul>`;
                     html += `</div>`;
@@ -398,8 +398,8 @@ async function handleDecode(e) {
                 if (p.duration_readable) {
                     html += `<div class="decode-section">`;
                     html += `<h4>Duration</h4>`;
-                    html += `<p>${p.duration_readable}</p>`;
-                    html += `<p class="decode-detail">Code: ${p.duration}</p>`;
+                    html += `<p>${escapeHtml(p.duration_readable)}</p>`;
+                    html += `<p class="decode-detail">Code: ${escapeHtml(p.duration)}</p>`;
                     html += `</div>`;
                 }
 
@@ -407,9 +407,9 @@ async function handleDecode(e) {
                 if (p.timestamp_readable) {
                     html += `<div class="decode-section">`;
                     html += `<h4>Issued</h4>`;
-                    html += `<p>${p.timestamp_readable}</p>`;
+                    html += `<p>${escapeHtml(p.timestamp_readable)}</p>`;
                     if (p.originator) {
-                        html += `<p class="decode-detail">Callsign: ${p.originator}</p>`;
+                        html += `<p class="decode-detail">Callsign: ${escapeHtml(p.originator)}</p>`;
                     }
                     html += `</div>`;
                 }
@@ -417,7 +417,7 @@ async function handleDecode(e) {
                 // Raw message
                 html += `<div class="decode-section">`;
                 html += `<h4>Raw SAME Message</h4>`;
-                html += `<code>${msg.raw}</code>`;
+                html += `<code>${escapeHtml(msg.raw)}</code>`;
                 html += `</div>`;
 
                 html += `</div>`;
@@ -558,6 +558,17 @@ function initializeLocationLookup() {
         // Pad FIPS codes to 6 digits (SAME protocol requires PSSCCC format)
         hiddenInput.value = selectedCounties.map(c => c.fips.padStart(6, '0')).join(',');
     }
+}
+
+// HTML escape function to prevent XSS
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // Download WAV file

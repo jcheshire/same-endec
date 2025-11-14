@@ -5,6 +5,7 @@ FastAPI Backend for SAME Encoder/Decoder Web Application
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import uvicorn
@@ -41,6 +42,34 @@ app = FastAPI(
     description="Web API for encoding and decoding EAS SAME protocol messages",
     version="1.0.0"
 )
+
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        # Content Security Policy - prevents XSS attacks
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "  # unsafe-inline needed for inline styles
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "media-src 'self' blob:; "  # blob: needed for audio player
+            "object-src 'none'; "
+            "frame-ancestors 'none';"
+        )
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        # Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+        # XSS protection (legacy, but still useful)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # Referrer policy
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Add rate limiting to app
 app.state.limiter = limiter
@@ -476,6 +505,8 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
 
         if q:
             sql += ' AND name LIKE ?'
+            # Security: % wildcards are part of the parameter value, not the SQL string,
+            # so they're properly escaped by the database driver via parameterization
             params.append(f'%{q}%')
 
         if state:
@@ -512,7 +543,8 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
 
 
 @app.get("/api/fips-lookup/{code}")
-async def fips_lookup(code: str):
+@limiter.limit("20/minute")
+async def fips_lookup(request: Request, code: str):
     """
     Look up FIPS code information from database
 
