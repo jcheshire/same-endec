@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import uvicorn
 import logging
+import sqlite3
+import os
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -22,6 +24,15 @@ logger = logging.getLogger(__name__)
 
 # Configure rate limiting
 limiter = Limiter(key_func=get_remote_address)
+
+# Database configuration
+DB_PATH = os.path.join(os.path.dirname(__file__), 'fips_codes.db')
+
+def get_db():
+    """Get database connection"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 app = FastAPI(
@@ -318,30 +329,118 @@ async def get_event_codes():
     return event_codes
 
 
+@app.get("/api/fips-search")
+@limiter.limit("20/minute")
+async def fips_search(request: Request, q: str = "", state: str = "", limit: int = 20):
+    """
+    Search for FIPS codes by county/location name
+
+    Query parameters:
+    - q: Search query (county name)
+    - state: Filter by state code (e.g., "MD", "CA")
+    - limit: Max results (default 20, max 100)
+    """
+    # Security: Validate inputs
+    if limit > 100:
+        limit = 100
+
+    if len(q) < 2 and not state:
+        return {"results": [], "count": 0}
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Build query
+        sql = 'SELECT fips, name, state, type FROM fips_codes WHERE type = "county"'
+        params = []
+
+        if q:
+            sql += ' AND name LIKE ?'
+            params.append(f'%{q}%')
+
+        if state:
+            sql += ' AND state = ?'
+            params.append(state.upper())
+
+        sql += ' ORDER BY name LIMIT ?'
+        params.append(limit)
+
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = [
+            {
+                "fips": row['fips'],
+                "name": row['name'],
+                "state": row['state'],
+                "display": f"{row['name']}, {row['state']} ({row['fips']})"
+            }
+            for row in rows
+        ]
+
+        return {
+            "results": results,
+            "count": len(results),
+            "query": q,
+            "state_filter": state
+        }
+
+    except Exception as e:
+        logger.error(f"FIPS search failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="FIPS search failed")
+
+
 @app.get("/api/fips-lookup/{code}")
 async def fips_lookup(code: str):
     """
-    Look up FIPS code information (placeholder - would need real database)
-    """
-    # This is a placeholder. In production, integrate with a FIPS code database
-    common_codes = {
-        "000000": "United States (All)",
-        "024031": "Montgomery County, MD",
-        "011001": "District of Columbia",
-    }
+    Look up FIPS code information from database
 
-    if code in common_codes:
-        return {
-            "code": code,
-            "location": common_codes[code],
-            "found": True
-        }
-    else:
-        return {
-            "code": code,
-            "location": "Unknown",
-            "found": False
-        }
+    Returns county/location information for a given FIPS code
+    """
+    # Security: Validate FIPS code format (should be 4-6 digits)
+    if not code.isdigit() or len(code) < 1 or len(code) > 6:
+        raise HTTPException(status_code=400, detail="Invalid FIPS code format")
+
+    # Pad to 4 digits for county codes (e.g., "1001" not "11001")
+    # SAME protocol uses PSSCCC format where PSS is state and CCC is county
+    if len(code) == 5:
+        # Convert 5-digit to 4-digit (remove leading digit if it's a 0)
+        code = code.lstrip('0') or '0'
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Look up FIPS code
+        cursor.execute(
+            'SELECT fips, name, state, type FROM fips_codes WHERE fips = ?',
+            (code.zfill(4),)  # Pad with leading zeros to 4 digits
+        )
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {
+                "code": code,
+                "fips": row['fips'],
+                "location": row['name'],
+                "state": row['state'],
+                "type": row['type'],
+                "found": True
+            }
+        else:
+            return {
+                "code": code,
+                "location": "Unknown",
+                "found": False
+            }
+
+    except Exception as e:
+        logger.error(f"FIPS lookup failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="FIPS lookup failed")
 
 
 if __name__ == "__main__":
