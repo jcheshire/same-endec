@@ -481,12 +481,16 @@ async def get_event_codes():
 @limiter.limit("20/minute")
 async def fips_search(request: Request, q: str = "", state: str = "", limit: int = 20):
     """
-    Search for FIPS codes by county/location name
+    Smart search for FIPS codes by county name OR FIPS code number
 
     Query parameters:
-    - q: Search query (county name)
+    - q: Search query (county name or FIPS code)
     - state: Filter by state code (e.g., "MD", "CA")
     - limit: Max results (default 20, max 100)
+
+    The search automatically detects if you're searching by:
+    - FIPS code (all digits) - searches FIPS column
+    - County name (contains letters) - searches name column
     """
     # Security: Validate inputs
     if limit > 100:
@@ -504,10 +508,21 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
         params = []
 
         if q:
-            sql += ' AND name LIKE ?'
-            # Security: % wildcards are part of the parameter value, not the SQL string,
-            # so they're properly escaped by the database driver via parameterization
-            params.append(f'%{q}%')
+            # Smart detection: is this a FIPS code (numeric) or county name (text)?
+            if q.strip().isdigit():
+                # Numeric search - search by FIPS code
+                # Strip leading zeros from search query to match database format
+                fips_query = q.strip().lstrip('0') or '0'
+                sql += ' AND fips LIKE ?'
+                # Security: % wildcards are part of the parameter value, not the SQL string,
+                # so they're properly escaped by the database driver via parameterization
+                params.append(f'{fips_query}%')  # Prefix match for partial FIPS codes
+            else:
+                # Text search - search by county name
+                sql += ' AND name LIKE ?'
+                # Security: % wildcards are part of the parameter value, not the SQL string,
+                # so they're properly escaped by the database driver via parameterization
+                params.append(f'%{q}%')
 
         if state:
             sql += ' AND state = ?'
