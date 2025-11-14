@@ -252,9 +252,12 @@ def enrich_parsed_message(parsed: Dict) -> Dict:
         conn = get_db()
         cursor = conn.cursor()
         for fips in parsed["locations"]:
-            # Pad to 6 digits
+            # SAME uses 6-digit FIPS (PSSCCC), database uses 5-digit (SSCCC)
+            # Strip leading zeros/part digit to get state+county code
             fips_padded = fips.zfill(6)
-            cursor.execute('SELECT name, state FROM fips_codes WHERE fips = ? AND type = "county"', (fips_padded,))
+            fips_lookup = fips_padded.lstrip('0') or '0'  # Remove leading zeros, keep at least one digit
+
+            cursor.execute('SELECT name, state FROM fips_codes WHERE fips = ? AND type = "county"', (fips_lookup,))
             row = cursor.fetchone()
             if row:
                 location_details.append({
