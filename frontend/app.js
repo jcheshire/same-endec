@@ -388,7 +388,13 @@ async function handleDecode(e) {
                     html += `<h4>Affected Areas</h4>`;
                     html += `<ul class="location-list">`;
                     p.location_details.forEach(loc => {
-                        html += `<li>${escapeHtml(loc.name)}, ${escapeHtml(loc.state)} <span class="fips-code">(${escapeHtml(loc.fips)})</span></li>`;
+                        let locationText = '';
+                        if (loc.subdivision) {
+                            locationText = `${escapeHtml(loc.subdivision)} of ${escapeHtml(loc.name)}, ${escapeHtml(loc.state)}`;
+                        } else {
+                            locationText = `${escapeHtml(loc.name)}, ${escapeHtml(loc.state)}`;
+                        }
+                        html += `<li>${locationText} <span class="fips-code">(${escapeHtml(loc.fips)})</span></li>`;
                     });
                     html += `</ul>`;
                     html += `</div>`;
