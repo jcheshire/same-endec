@@ -102,6 +102,13 @@ function initializeEncodingForm() {
 async function handlePreview(e) {
     e.preventDefault();
 
+    // Validate event code
+    const eventCode = document.getElementById('event-code').value;
+    if (!eventCode || eventCode.trim() === '') {
+        showError('Please select an event code from the dropdown');
+        return;
+    }
+
     // Validate location codes
     const locationCodesValue = document.getElementById('location-codes').value;
     if (!locationCodesValue || locationCodesValue.trim() === '') {
@@ -110,7 +117,7 @@ async function handlePreview(e) {
     }
 
     const data = {
-        event_code: document.getElementById('event-code').value,
+        event_code: eventCode,
         originator: document.getElementById('originator').value,
         location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
         duration: document.getElementById('duration').value,
@@ -166,6 +173,13 @@ async function handlePreview(e) {
 async function handleEncode(e) {
     e.preventDefault();
 
+    // Validate event code
+    const eventCode = document.getElementById('event-code').value;
+    if (!eventCode || eventCode.trim() === '') {
+        showError('Please select an event code from the dropdown');
+        return;
+    }
+
     // Validate location codes
     const locationCodesValue = document.getElementById('location-codes').value;
     if (!locationCodesValue || locationCodesValue.trim() === '') {
@@ -174,7 +188,7 @@ async function handleEncode(e) {
     }
 
     const data = {
-        event_code: document.getElementById('event-code').value,
+        event_code: eventCode,
         originator: document.getElementById('originator').value,
         location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
         duration: document.getElementById('duration').value,
