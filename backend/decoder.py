@@ -9,6 +9,7 @@ import json
 import os
 import tempfile
 import logging
+import re
 from pathlib import Path
 from typing import Optional, Dict, List, Union
 
@@ -17,6 +18,30 @@ logger = logging.getLogger(__name__)
 
 class SAMEDecoder:
     """Decoder for SAME protocol EAS messages using multimon-ng"""
+
+    @staticmethod
+    def clean_same_message(message: str) -> str:
+        """
+        Clean a SAME message by removing noise and invalid characters
+
+        Args:
+            message: Raw SAME message string
+
+        Returns:
+            Cleaned message string with only valid SAME characters
+        """
+        # SAME messages only contain: uppercase letters, numbers, +, and -
+        # Remove everything else
+        cleaned = re.sub(r'[^A-Z0-9+\-]', '', message.upper())
+
+        # Try to extract the core message pattern if there's noise
+        # Look for pattern: ORG-EVENT-LOCATION+DURATION-TIMESTAMP-CALLSIGN
+        # This regex is lenient to handle partial messages
+        match = re.search(r'([A-Z]{3}-[A-Z]{3}-[0-9+\-]+)', cleaned)
+        if match:
+            return match.group(1)
+
+        return cleaned
 
     def __init__(self, multimon_binary_path: Optional[str] = None):
         """
@@ -193,9 +218,14 @@ class SAMEDecoder:
 
                     # Check for message
                     if "last_message" in data:
-                        result["messages"].append(data)
-                        result["success"] = True
-                        logger.info(f"Found SAME message: {data['last_message']}")
+                        # Clean the message to remove noise
+                        cleaned_msg = self.clean_same_message(data['last_message'])
+                        if cleaned_msg:
+                            data['last_message'] = cleaned_msg
+                            data['original_message'] = data.get('last_message')
+                            result["messages"].append(data)
+                            result["success"] = True
+                            logger.info(f"Found SAME message (cleaned): {cleaned_msg}")
 
                 except json.JSONDecodeError as e:
                     logger.warning(f"Failed to parse JSON line: {line} - Error: {e}")
@@ -250,14 +280,22 @@ class SAMEDecoder:
             "locations": [],
             "duration": None,
             "timestamp": None,
-            "originator": None
+            "originator": None,
+            "partial": False  # Flag to indicate if message is incomplete
         }
 
-        if len(parts) < 3:
+        # Handle partial messages gracefully
+        if len(parts) < 2:
+            logger.warning(f"Message too short to parse: {message_string}")
+            result["partial"] = True
             return result
 
-        result["org"] = parts[0]
-        result["event"] = parts[1]
+        # Try to extract what we can even from partial messages
+        if len(parts) >= 1 and parts[0]:
+            result["org"] = parts[0] if len(parts[0]) == 3 else None
+
+        if len(parts) >= 2 and parts[1]:
+            result["event"] = parts[1] if len(parts[1]) == 3 else None
 
         # Find duration (starts with + or contains +)
         duration_idx = None
@@ -273,18 +311,38 @@ class SAMEDecoder:
                 # Split on the + to separate location from duration
                 loc, dur = location_duration_part.split('+', 1)
                 # Add all previous parts as locations, plus the location from this part
-                result["locations"] = parts[2:duration_idx] + [loc] if loc else parts[2:duration_idx]
-                result["duration"] = '+' + dur
+                locations = parts[2:duration_idx] + ([loc] if loc else [])
+                # Filter locations: should be 6 digits (or close to it)
+                result["locations"] = [l for l in locations if l and l.isdigit() and 4 <= len(l) <= 6]
+                result["duration"] = '+' + dur if dur else None
             else:
                 # Everything between event and duration is location codes
-                result["locations"] = parts[2:duration_idx]
+                locations = parts[2:duration_idx]
+                # Filter locations: should be 6 digits (or close to it)
+                result["locations"] = [l for l in locations if l and l.isdigit() and 4 <= len(l) <= 6]
                 result["duration"] = parts[duration_idx]
 
             # Remaining parts are timestamp and originator
             if duration_idx + 1 < len(parts):
-                result["timestamp"] = parts[duration_idx + 1]
+                timestamp = parts[duration_idx + 1]
+                # Validate timestamp: should be 7 digits (JJJHHMM)
+                if timestamp and timestamp.isdigit() and len(timestamp) == 7:
+                    result["timestamp"] = timestamp
+                else:
+                    logger.warning(f"Invalid timestamp: {timestamp}")
+                    result["partial"] = True
+
             if duration_idx + 2 < len(parts):
-                result["originator"] = parts[duration_idx + 2]
+                originator = parts[duration_idx + 2]
+                # Originator should be alphanumeric, max 8 chars
+                if originator and len(originator) <= 8:
+                    result["originator"] = originator
+        else:
+            # No duration found - message is partial
+            result["partial"] = True
+            # Try to get locations anyway
+            locations = parts[2:]
+            result["locations"] = [l for l in locations if l and l.isdigit() and 4 <= len(l) <= 6]
 
         return result
 
