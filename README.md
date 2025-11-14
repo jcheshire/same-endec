@@ -2,243 +2,244 @@
 
 Web application for encoding and decoding Emergency Alert System (EAS) messages using the SAME (Specific Area Message Encoding) protocol.
 
-## Project Status
+## 🚀 Quick Start (TL;DR)
 
-**Current Progress:**
-- ✅ Backend API complete (FastAPI)
-- ✅ Encoder module refactored and secured
-- ✅ Decoder wrapper implemented
-- ✅ Security vulnerabilities fixed
-- ✅ Frontend complete (vanilla JS/CSS)
-- ✅ Automated deployment script
-- ⬜ multimon-ng compilation (run deploy.sh on Ubuntu)
+Want to run this on your server? It's simple:
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd same-endec
+
+# Run the automated deployment script
+sudo ./deploy.sh
+
+# Optional: Add HTTPS with Let's Encrypt
+sudo certbot --nginx -d your-domain.com
+```
+
+That's it! The deployment script will:
+- Install all dependencies (Python, build tools, nginx, sox)
+- Compile multimon-ng decoder
+- Set up Python virtual environment
+- Initialize FIPS county database
+- Create systemd services that start on boot
+- Configure nginx as a reverse proxy
+
+Access your application at `http://your-server-ip` (or `https://your-domain.com` after adding SSL).
+
+---
+
+## Features
+
+### Encoding
+- **Build SAME Messages** - User-friendly form with event codes, county search, and duration
+- **Raw Encoding** - Encode custom SAME strings directly
+- **Preview** - See the SAME message before encoding
+- **3-Step Output** - Header WAV + Your Audio + EOM WAV for complete broadcasts
+- **County Search** - Search 3,143+ US counties by name with autocomplete
+
+### Decoding
+- **Upload WAV Files** - Decode SAME messages from audio
+- **Human-Readable Output** - Location names, readable durations, full timestamps
+- **Robust Parsing** - Handles noisy/partial messages gracefully
+- **FIPS Lookup** - Automatically resolves county codes to names
+
+### Security
+- **XSS Protection** - HTML escaping + Content Security Policy headers
+- **SQL Injection Protection** - Parameterized queries throughout
+- **Rate Limiting** - 5-20 requests/minute per endpoint
+- **Input Validation** - Pydantic models with regex patterns
+- **File Upload Security** - Size limits, magic byte validation, content-type checks
+- **Command Injection Protection** - Subprocess list format, no shell execution
+
+---
 
 ## Project Structure
 
 ```
 same-endec/
 ├── backend/
-│   ├── encoder.py          # SAME protocol encoder (Python)
-│   ├── decoder.py          # Wrapper for multimon-ng binary
+│   ├── encoder.py          # SAME protocol encoder
+│   ├── decoder.py          # multimon-ng wrapper
 │   ├── api.py              # FastAPI web server
-│   └── requirements.txt    # Python dependencies
+│   ├── init_fips_db.py     # FIPS database initialization
+│   ├── generate_eom.py     # Static EOM WAV generator
+│   ├── requirements.txt    # Python dependencies
+│   └── fips_codes.db       # SQLite database (3,143 counties)
 ├── frontend/
 │   ├── index.html          # Web interface
 │   ├── app.js              # Frontend logic (vanilla JS)
-│   └── style.css           # Styling (no external dependencies)
+│   ├── style.css           # Styling (no external dependencies)
+│   └── eom.wav             # Static End of Message audio
 ├── multimon-ng/            # Decoder source code (C)
-├── bin/                    # Compiled binaries go here
+│   └── (submodule)         # Git submodule
+├── bin/                    # Compiled binaries (created by deploy.sh)
+│   └── multimon-ng         # Decoder binary
 ├── deploy.sh               # Automated deployment script
-├── same_encoder.py         # Original encoder script (reference)
 └── README.md
 ```
 
+---
+
 ## How It Works
 
-### Encoder (Python)
-- Generates FSK-modulated WAV audio files from SAME message strings
-- Uses AFSK with mark frequency (2083.33 Hz) and space frequency (1562.5 Hz)
-- Encodes at 520.83 baud, outputs 43,750 Hz sample rate WAV
-- Transmits messages 3x with preamble per SAME protocol spec
+### SAME Encoder (Python)
+- Generates FSK-modulated WAV audio from SAME message strings
+- Uses AFSK with mark frequency 2083.33 Hz and space frequency 1562.5 Hz
+- Encodes at 520.83 baud, outputs 44.1 kHz sample rate WAV
+- Transmits header 3 times with preamble per SAME protocol spec
+- **New:** Separates header and EOM for flexibility in broadcasting
 
-### Decoder (multimon-ng wrapper)
+### SAME Decoder (multimon-ng wrapper)
 - Calls compiled multimon-ng binary via subprocess
-- Parses JSON or text output
-- Validates WAV files before processing
-- Handles temp file management securely
+- Parses JSON output with robust error handling
+- Validates WAV files before processing (magic bytes)
+- Cleans noisy messages and handles partial data
+- Enriches output with human-readable information
+
+### Web Frontend (Vanilla JS)
+- Zero external dependencies (no React, Vue, jQuery, etc.)
+- County autocomplete search using FIPS database API
+- Real-time validation and preview
+- Audio player with download functionality
+- Responsive design for mobile and desktop
 
 ### API Endpoints
 
-- `POST /api/encode` - Build and encode SAME message → WAV file
-- `POST /api/encode/raw` - Encode custom SAME string → WAV file
+#### Encoding
+- `POST /api/encode` - Build and encode SAME message → Header WAV
+- `POST /api/encode/raw` - Encode custom SAME string → Header WAV
 - `POST /api/encode/preview` - Preview SAME string without encoding
-- `POST /api/decode` - Upload WAV → decoded SAME message
-- `GET /api/event-codes` - List of EAS event codes
-- `GET /api/fips-lookup/{code}` - Location code lookup
 
-## Getting Started
+#### Decoding
+- `POST /api/decode` - Upload WAV → enriched decoded message
+
+#### Reference Data
+- `GET /api/event-codes` - List of 50+ EAS event codes
+- `GET /api/fips-search?q=<county>` - Search counties by name
+- `GET /api/fips-lookup/{code}` - Look up county by FIPS code
+
+#### Health
+- `GET /health` - Health check endpoint
+
+---
+
+## Installation & Deployment
 
 ### Prerequisites
 
-**On Mac (for development):**
-```bash
-python3 --version  # Need Python 3.8+
-```
+**Operating System:** Ubuntu 20.04+ or Debian 11+ (for deployment)
 
-**On Ubuntu (for deployment):**
-```bash
-# Will need to compile multimon-ng binary
-sudo apt-get install build-essential cmake libpulse-dev
-```
+**System Packages:**
+- Python 3.8+
+- build-essential, cmake (for compiling multimon-ng)
+- libpulse-dev, sox (for audio processing)
+- nginx (optional, for production)
 
-### Installation
+### Automated Deployment (Recommended)
 
-#### 1. Install Python Dependencies
+The `deploy.sh` script handles everything:
 
 ```bash
-cd backend
-pip install -r requirements.txt
-```
-
-**Dependencies:**
-- fastapi - Web framework
-- uvicorn - ASGI server
-- numpy, scipy - Signal processing
-- python-multipart - File uploads
-- slowapi - Rate limiting
-- pydantic - Request validation
-
-#### 2. Compile multimon-ng (Ubuntu only)
-
-**Important:** The multimon-ng binary must be compiled on Ubuntu, not Mac.
-
-```bash
-cd multimon-ng
-mkdir build
-cd build
-cmake ..
-make
-cp multimon-ng ../../bin/
-```
-
-For Mac development, you can mock the decoder or skip decode testing until deploying to Ubuntu.
-
-### Running the Application
-
-#### Start the Backend API
-
-```bash
-cd backend
-python api.py
-```
-
-Server runs at: `http://localhost:8000`
-
-API docs (Swagger UI): `http://localhost:8000/docs`
-
-#### Environment Variables
-
-```bash
-# Configure CORS allowed origins (comma-separated)
-export ALLOWED_ORIGINS="http://localhost:3000,http://yoursite.com"
-```
-
-## Security Features
-
-All OWASP Top 10 vulnerabilities addressed:
-
-- ✅ Path traversal prevention
-- ✅ Command injection protection
-- ✅ Input validation (regex patterns)
-- ✅ File upload size limits (10MB)
-- ✅ WAV header validation (magic bytes)
-- ✅ Rate limiting (5-20 req/min per endpoint)
-- ✅ CORS restrictions (configurable origins)
-- ✅ Error message sanitization
-- ✅ Secure temp file handling
-
-## Testing the API
-
-### Encode a Message
-
-```bash
-curl -X POST http://localhost:8000/api/encode \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event_code": "TOR",
-    "location_codes": ["024031"],
-    "duration": "+0030",
-    "originator": "SCIENCE"
-  }' \
-  --output test.wav
-```
-
-### Preview a Message
-
-```bash
-curl -X POST http://localhost:8000/api/encode/preview \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event_code": "TOR",
-    "location_codes": ["024031"],
-    "duration": "+0030"
-  }'
-```
-
-### Decode a WAV File
-
-```bash
-curl -X POST http://localhost:8000/api/decode \
-  -F "file=@test.wav"
-```
-
-### Get Event Codes
-
-```bash
-curl http://localhost:8000/api/event-codes
-```
-
-## Deployment
-
-### Quick Start with Nginx (Recommended)
-
-For production deployment with nginx reverse proxy:
-
-```bash
-# On Ubuntu server
+# Clone repository
 git clone <your-repo-url>
 cd same-endec
 
-# Edit deploy.sh and set USE_NGINX=true
-nano deploy.sh  # Change line 21: USE_NGINX=true
-
-# Run deployment
+# Run deployment script
 sudo ./deploy.sh
 ```
 
-**After deployment:**
-1. Edit nginx config: `sudo nano /etc/nginx/sites-available/same-endec`
-2. Replace `server_name _;` with your domain (e.g., `server_name same.example.com;`)
-3. Test: `sudo nginx -t`
-4. Reload: `sudo systemctl reload nginx`
-5. Secure with Let's Encrypt: `sudo certbot --nginx -d your-domain.com`
+The script will:
+1. ✅ Install system dependencies (Python, build tools, sox, nginx)
+2. ✅ Create Python virtual environment
+3. ✅ Install Python packages (FastAPI, numpy, scipy, etc.)
+4. ✅ Download and initialize FIPS database (3,143 counties)
+5. ✅ Generate static EOM WAV file
+6. ✅ Compile multimon-ng decoder binary
+7. ✅ Create systemd services for auto-start
+8. ✅ Configure nginx reverse proxy
+9. ✅ Start all services
 
-### Automated Deployment Options
+**Configuration:**
 
-The `deploy.sh` script supports two modes:
-
-**Option 1: With Nginx (Production)**
-- Set `USE_NGINX=true` in deploy.sh (line 21)
-- Installs nginx, configures reverse proxy
-- Backend only listens on localhost (more secure)
-- Single port 80/443 for everything
-- No CORS issues
-
-**Option 2: Without Nginx (Development/Testing)**
-- Set `USE_NGINX=false` in deploy.sh (line 21, default)
-- Runs separate frontend service on port 8080
-- Backend on port 8000
-- Good for development/testing
-
-Both modes:
-1. Install system dependencies (build tools, cmake, Python)
-2. Set up Python virtual environment
-3. Compile multimon-ng binary
-4. Create systemd services
-5. Enable auto-start on system reboot
-6. Start services
-
-### Manual Deployment
-
-If you prefer manual setup:
-
-#### 1. Install Dependencies
+By default, `deploy.sh` uses nginx. If you want to run without nginx:
 ```bash
-sudo apt-get update
-sudo apt-get install -y python3 python3-pip python3-venv build-essential cmake libpulse-dev
+# Edit deploy.sh
+nano deploy.sh
+# Change line 21: USE_NGINX=false
+
+# Then run deployment
+sudo ./deploy.sh
 ```
 
-#### 2. Set Up Python Environment
+### Post-Deployment Setup
+
+#### 1. Configure Domain Name (Optional)
+
+Edit the nginx configuration:
+```bash
+sudo nano /etc/nginx/sites-available/same-endec
+```
+
+Replace `server_name _;` with your domain:
+```nginx
+server_name same.yourdomain.com;
+```
+
+Test and reload:
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### 2. Add HTTPS with Let's Encrypt (Recommended)
+
+```bash
+# Install certbot
+sudo apt-get install -y certbot python3-certbot-nginx
+
+# Obtain and install certificate
+sudo certbot --nginx -d same.yourdomain.com
+
+# Follow the prompts
+# Choose option 2 to redirect HTTP → HTTPS
+```
+
+Certificates auto-renew via cron.
+
+### Service Management
+
+Services are managed via systemd:
+
+```bash
+# View logs (real-time)
+sudo journalctl -u same-endec-backend -f
+
+# Restart backend after code changes
+sudo systemctl restart same-endec-backend
+
+# Check service status
+sudo systemctl status same-endec-backend
+
+# Stop services
+sudo systemctl stop same-endec-backend
+
+# Start services
+sudo systemctl start same-endec-backend
+
+# Disable auto-start
+sudo systemctl disable same-endec-backend
+```
+
+Services automatically start on system reboot.
+
+### Manual Installation (Development)
+
+For local development without systemd:
+
+#### 1. Install Python Dependencies
+
 ```bash
 cd backend
 python3 -m venv venv
@@ -246,146 +247,374 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### 3. Compile multimon-ng
+#### 2. Initialize FIPS Database
+
 ```bash
-cd multimon-ng
-mkdir build && cd build
-cmake ..
-make
-cp multimon-ng ../../bin/
+python init_fips_db.py
 ```
 
-#### 4a. Run with Nginx (Production)
+#### 3. Generate EOM File
+
 ```bash
-# Install and configure nginx
-sudo apt-get install -y nginx
-sudo cp nginx.conf /etc/nginx/sites-available/same-endec
-sudo ln -s /etc/nginx/sites-available/same-endec /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+python generate_eom.py
+```
 
-# Update server_name in config
-sudo nano /etc/nginx/sites-available/same-endec
+#### 4. Run Backend
 
-# Test and reload nginx
-sudo nginx -t
-sudo systemctl reload nginx
-
-# Start backend (binds to localhost only)
-cd backend
-source venv/bin/activate
+```bash
 python api.py
 ```
 
-#### 4b. Run without Nginx (Development)
-```bash
-# Terminal 1 - Backend (public access for testing)
-cd backend
-source venv/bin/activate
-python api.py --public
+Backend runs at: `http://localhost:8000`
+API docs (Swagger): `http://localhost:8000/docs`
 
-# Terminal 2 - Frontend
+#### 5. Serve Frontend
+
+```bash
+# In a separate terminal
 cd frontend
 python3 -m http.server 8080
 ```
 
-### Service Management
+Frontend runs at: `http://localhost:8080`
 
-After running `deploy.sh`, services are managed via systemd:
+**Note:** On macOS, you won't be able to compile multimon-ng or decode messages. Deploy to Ubuntu for full functionality.
+
+---
+
+## Environment Variables
+
+Configure via environment variables or systemd service files:
 
 ```bash
-# View logs
-sudo journalctl -u same-endec-backend -f
-sudo journalctl -u same-endec-frontend -f
+# CORS allowed origins (comma-separated)
+export ALLOWED_ORIGINS="http://localhost:8080,https://same.yourdomain.com"
 
-# Restart services
-sudo systemctl restart same-endec-backend
-sudo systemctl restart same-endec-frontend
+# Backend bind address (default: 127.0.0.1 for nginx, 0.0.0.0 for standalone)
+export BIND_HOST="127.0.0.1"
 
-# Stop services
-sudo systemctl stop same-endec-{backend,frontend}
-
-# Start services
-sudo systemctl start same-endec-{backend,frontend}
-
-# Check status
-sudo systemctl status same-endec-backend
-sudo systemctl status same-endec-frontend
+# Backend port (default: 8000)
+export PORT="8000"
 ```
 
-Services will automatically start on system reboot.
+---
 
-## Future Enhancements
+## Usage Examples
 
-- Add FIPS code database lookup
-- Message history/logging
-- Audio visualization (waveform/spectrogram)
-- Batch processing
-- WebSocket support for real-time updates
-- Nginx reverse proxy configuration
+### Web Interface
+
+1. Navigate to your deployed URL (e.g., `https://same.yourdomain.com`)
+2. Select **Encode Message** tab
+3. Choose an event code (e.g., "TOR - Tornado Warning")
+4. Search and select counties (e.g., "Montgomery, MD")
+5. Set duration (e.g., "+0030" for 30 minutes)
+6. Click **Encode to WAV**
+7. Download the **Header WAV** and **EOM WAV** files
+8. Record your audio message
+9. Concatenate: Header → Your Audio → EOM → Broadcast!
+
+### API Usage
+
+#### Encode a Message
+
+```bash
+curl -X POST http://localhost:8000/api/encode \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_code": "TOR",
+    "originator": "WXR",
+    "location_codes": ["024031"],
+    "duration": "+0030",
+    "callsign": "SCIENCE"
+  }' \
+  --output header.wav
+```
+
+#### Preview a Message
+
+```bash
+curl -X POST http://localhost:8000/api/encode/preview \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_code": "TOR",
+    "originator": "WXR",
+    "location_codes": ["024031"],
+    "duration": "+0030"
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "ZCZC-WXR-TOR-024031+0030-3191423-SCIENCE-"
+}
+```
+
+#### Decode a WAV File
+
+```bash
+curl -X POST http://localhost:8000/api/decode \
+  -F "file=@header.wav"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "messages": [{
+    "raw": "WXR-TOR-024031+0030-3191423-SCIENCE-",
+    "parsed": {
+      "org": "WXR",
+      "org_description": "National Weather Service",
+      "event": "TOR",
+      "event_description": "Tornado Warning",
+      "locations": ["024031"],
+      "location_details": [{
+        "fips": "024031",
+        "name": "Montgomery County",
+        "state": "MD"
+      }],
+      "duration": "+0030",
+      "duration_readable": "30 minutes",
+      "timestamp": "3191423",
+      "timestamp_readable": "November 15, 2024 at 14:23 UTC",
+      "originator": "SCIENCE"
+    }
+  }]
+}
+```
+
+#### Search Counties
+
+```bash
+curl "http://localhost:8000/api/fips-search?q=Montgomery&limit=10"
+```
+
+---
 
 ## SAME Message Format
+
+SAME messages follow this structure:
 
 ```
 ZCZC-ORG-EEE-PSSCCC-PSSCCC+TTTT-JJJHHMM-LLLLLLLL-
 ```
 
-Where:
-- `ZCZC` = Header (always)
-- `ORG` = Originator (WXR, PEP, CIV)
-- `EEE` = Event code (TOR, SVR, etc.)
-- `PSSCCC` = Location code (6 digits, can repeat)
-- `+TTTT` = Duration (+HHMM format)
-- `JJJHHMM` = Timestamp (Julian day + time)
-- `LLLLLLLL` = Originator callsign (8 chars max)
+**Field Breakdown:**
 
-**Example:**
+| Field | Description | Example | Notes |
+|-------|-------------|---------|-------|
+| `ZCZC` | Header | ZCZC | Always present |
+| `ORG` | Originator | WXR | 3 chars (WXR, PEP, CIV, EAS) |
+| `EEE` | Event code | TOR | 3 chars (see event codes) |
+| `PSSCCC` | Location code | 024031 | 6 digits (P=part, SS=state, CCC=county) |
+| `+TTTT` | Duration | +0030 | +HHMM format |
+| `JJJHHMM` | Timestamp | 3191423 | JJJ=Julian day, HHMM=UTC time |
+| `LLLLLLLL` | Callsign | SCIENCE | Max 8 characters (optional) |
+
+**Example Message:**
 ```
-ZCZC-WXR-TOR-024031+0030-3171500-SCIENCE-
+ZCZC-WXR-TOR-024031+0030-3191423-SCIENCE-
 ```
-= Tornado warning for Montgomery County MD, valid 30 minutes
+
+Translates to: *Tornado Warning from National Weather Service for Montgomery County, MD, valid for 30 minutes, issued on November 15 at 14:23 UTC, by station SCIENCE*
+
+**Multiple Locations:**
+```
+ZCZC-WXR-TOR-024031-024033-024017+0030-3191423-SCIENCE-
+```
+
+Covers Montgomery, Prince George's, and Charles counties in Maryland.
+
+---
 
 ## Common Event Codes
 
-- `TOR` - Tornado Warning
-- `SVR` - Severe Thunderstorm Warning
-- `EAN` - Emergency Action Notification
-- `RWT` - Required Weekly Test
-- `RMT` - Required Monthly Test
+| Code | Description |
+|------|-------------|
+| `TOR` | Tornado Warning |
+| `SVR` | Severe Thunderstorm Warning |
+| `EAN` | Emergency Action Notification (National Emergency) |
+| `EAT` | Emergency Action Termination |
+| `NIC` | National Information Center |
+| `NPT` | National Periodic Test |
+| `RMT` | Required Monthly Test |
+| `RWT` | Required Weekly Test |
+| `FFW` | Flash Flood Warning |
+| `EVI` | Evacuation Immediate |
+| `CEM` | Civil Emergency Message |
+| `CAE` | Child Abduction Emergency (AMBER Alert) |
+| `HUW` | Hurricane Warning |
+| `TSW` | Tsunami Warning |
+| `EQW` | Earthquake Warning |
 
-(Full list available via `/api/event-codes`)
+Full list of 50+ codes available via `/api/event-codes` endpoint or the Reference tab in the web UI.
+
+---
 
 ## Troubleshooting
 
-### "multimon-ng binary not found"
+### Deployment Issues
+
+**"multimon-ng binary not found"**
 - Binary hasn't been compiled yet
-- Must compile on Ubuntu (not Mac)
-- Check `bin/multimon-ng` exists and is executable
+- Must be compiled on Ubuntu/Debian (not macOS)
+- Run `deploy.sh` to compile automatically
+- Check that `bin/multimon-ng` exists and is executable
 
-### "Encoding failed"
-- Check message length (max 268 chars)
-- Validate SAME format
-- Ensure location codes are 6 digits
-- Duration must be +HHMM format
+**"execlp: No such file or directory" when decoding**
+- Sox is not installed or not in PATH
+- Install: `sudo apt-get install sox`
+- If using systemd, ensure PATH includes `/usr/bin` (deploy.sh handles this)
 
-### Rate limit exceeded
+**Nginx 403 Forbidden**
+- Frontend files not readable by nginx
+- Check file permissions: `ls -la frontend/`
+- If files are in user home directory, move to `/var/www/same-endec`
+- Update nginx config `root` directive
+
+**Services not starting on reboot**
+- Services not enabled: `sudo systemctl enable same-endec-backend`
+- Check logs: `sudo journalctl -u same-endec-backend`
+
+### Encoding Issues
+
+**"Message too long (max 268 chars)"**
+- SAME protocol limits messages to 268 characters
+- Reduce number of location codes
+- Shorten callsign
+
+**"Invalid duration format"**
+- Duration must match `+HHMM` pattern
+- Examples: `+0030` (30 min), `+0100` (1 hour), `+0015` (15 min)
+
+**Location codes not found**
+- FIPS database not initialized
+- Run `python init_fips_db.py` in backend directory
+- Or run `deploy.sh` which initializes automatically
+
+### Decoding Issues
+
+**"No SAME message detected"**
+- Audio file doesn't contain valid SAME tones
+- Audio quality too poor (noise, distortion)
+- Wrong sample rate (should be 22050 Hz or higher)
+- File is not a WAV file (check with `file <filename>`)
+
+**Partial message warning**
+- Audio cut off before end of message
+- Noisy audio causing decode errors
+- Decoder will extract whatever valid fields it can find
+
+**Unknown county names**
+- FIPS code not in database (rare)
+- Or FIPS code is corrupted from noisy audio
+
+### API Issues
+
+**Rate limit exceeded**
 - Wait 1 minute between requests
-- Adjust limits in `api.py` if needed
+- Or adjust rate limits in `api.py` (lines with `@limiter.limit()`)
+
+**CORS errors in browser**
+- Frontend and backend on different domains without proper CORS setup
+- Use nginx reverse proxy (recommended)
+- Or add your domain to `ALLOWED_ORIGINS` environment variable
+
+---
 
 ## Development Notes
 
-- Encoder outputs at 43,750 Hz sample rate
-- Decoder expects 22,050 Hz input (multimon-ng spec)
-- May need resampling layer for round-trip encoding/decoding
-- Original script in `same_encoder.py` kept for reference
-- Security fixes applied 2024-11-13
+### Audio Format Details
+- **Encoder Output:** 44,100 Hz, 16-bit PCM WAV, mono
+- **Decoder Input:** 22,050 Hz or higher (multimon-ng requirement)
+- **FSK Modulation:** Mark 2083.33 Hz (binary 0), Space 1562.5 Hz (binary 1)
+- **Baud Rate:** 520.83 baud (per SAME spec)
+
+### FIPS Code Format
+- **SAME Protocol:** 6-digit format `PSSCCC` (P=subdivision part, SS=state, CCC=county)
+- **Database:** 5-digit format `SSCCC` (standard FIPS)
+- **Conversion:** Leading zero stripped for database lookup
+
+### 3-Step Broadcast Sequence
+
+The encoder now generates header-only WAV files. For complete EAS broadcasts:
+
+1. **Header WAV** - Generated by `/api/encode` (contains SAME tones repeated 3x)
+2. **Your Audio** - Record or upload your emergency message audio
+3. **EOM WAV** - Static file served at `/eom.wav` (contains "NNNN" repeated 3x)
+
+Concatenate these three files before broadcasting. Example using FFmpeg:
+```bash
+ffmpeg -i concat:"header.wav|message.wav|eom.wav" -c copy complete.wav
+```
+
+### Security Audit Results
+
+**Overall Security Rating:** A (Excellent)
+
+Addressed vulnerabilities:
+- ✅ XSS via innerHTML (HTML escaping implemented)
+- ✅ SQL injection (parameterized queries + security comments)
+- ✅ Command injection (subprocess list format, path validation)
+- ✅ Rate limiting on all endpoints
+- ✅ CSP headers and security headers middleware
+- ✅ File upload validation (size, magic bytes, content-type)
+- ✅ Input validation with Pydantic regex patterns
+
+No critical or high-severity vulnerabilities found.
+
+---
+
+## Architecture
+
+### Backend (Python/FastAPI)
+- **FastAPI Framework:** Modern async web framework
+- **Pydantic Validation:** Type-safe request/response models
+- **NumPy/SciPy:** Signal processing for FSK encoding
+- **SQLite:** FIPS code database (3,143+ counties)
+- **multimon-ng:** External C binary for decoding
+- **slowapi:** Rate limiting middleware
+
+### Frontend (Vanilla JavaScript)
+- **Zero Dependencies:** No npm, webpack, React, jQuery, etc.
+- **Progressive Enhancement:** Works without JavaScript for basic functionality
+- **Responsive Design:** Mobile-first CSS with flexbox
+- **Fetch API:** Modern async HTTP requests
+- **HTML5 Audio:** Native audio playback
+
+### Deployment
+- **systemd:** Service management and auto-start
+- **nginx:** Reverse proxy, static file serving, SSL termination
+- **Let's Encrypt:** Free SSL certificates via certbot
+
+---
+
+## Contributing
+
+This is a personal project but suggestions welcome:
+
+1. Open an issue describing the bug/feature
+2. Fork the repository
+3. Create a feature branch
+4. Make your changes with tests
+5. Submit a pull request
+
+---
 
 ## License
 
-Based on:
-- Original encoder: Custom implementation
-- multimon-ng: GPL v2.0
+**Backend Code:** Custom implementation
+**multimon-ng:** GPL v2.0 (git submodule)
+**FIPS Data:** Public domain (US Census Bureau)
+
+---
 
 ## References
 
-- [SAME Protocol Specification](http://www.nws.noaa.gov/nwr/nwrsame.htm)
-- [multimon-ng Documentation](https://github.com/EliasOenal/multimon-ng)
+- [SAME Protocol Specification (NOAA)](http://www.nws.noaa.gov/nwr/nwrsame.htm)
+- [multimon-ng GitHub](https://github.com/EliasOenal/multimon-ng)
+- [EAS Wikipedia](https://en.wikipedia.org/wiki/Emergency_Alert_System)
+- [FIPS County Codes](https://www.census.gov/library/reference/code-lists/ansi.html)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
