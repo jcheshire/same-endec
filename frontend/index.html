@@ -43,10 +43,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="location-codes">Location Codes (FIPS):</label>
-                        <input type="text" id="location-codes" placeholder="e.g., 024031,024033" required>
-                        <span class="help-text">Comma-separated 6-digit FIPS codes</span>
-                        <div id="location-lookup"></div>
+                        <label for="county-search">Search Counties:</label>
+                        <input type="text" id="county-search" placeholder="Type county name (e.g., Montgomery)" autocomplete="off">
+                        <span class="help-text">Search for counties to add to alert</span>
+                        <div id="search-results" class="search-results hidden"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Selected Counties:</label>
+                        <div id="selected-counties" class="selected-counties">
+                            <span class="help-text">No counties selected. Search and click to add.</span>
+                        </div>
+                        <input type="hidden" id="location-codes" required>
                     </div>
 
                     <div class="form-group">
