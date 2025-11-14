@@ -127,6 +127,16 @@ async function handlePreview(e) {
 
         if (!response.ok) {
             const error = await response.json();
+            // Handle Pydantic validation errors (422)
+            if (response.status === 422 && error.detail) {
+                if (Array.isArray(error.detail)) {
+                    // Format validation errors nicely
+                    const messages = error.detail.map(e => `${e.loc[e.loc.length - 1]}: ${e.msg}`).join(', ');
+                    throw new Error(messages);
+                } else if (typeof error.detail === 'string') {
+                    throw new Error(error.detail);
+                }
+            }
             throw new Error(error.detail || 'Preview failed');
         }
 
@@ -181,6 +191,16 @@ async function handleEncode(e) {
 
         if (!response.ok) {
             const error = await response.json();
+            // Handle Pydantic validation errors (422)
+            if (response.status === 422 && error.detail) {
+                if (Array.isArray(error.detail)) {
+                    // Format validation errors nicely
+                    const messages = error.detail.map(e => `${e.loc[e.loc.length - 1]}: ${e.msg}`).join(', ');
+                    throw new Error(messages);
+                } else if (typeof error.detail === 'string') {
+                    throw new Error(error.detail);
+                }
+            }
             throw new Error(error.detail || 'Encoding failed');
         }
 
@@ -229,6 +249,16 @@ async function handleRawEncode(e) {
 
         if (!response.ok) {
             const error = await response.json();
+            // Handle Pydantic validation errors (422)
+            if (response.status === 422 && error.detail) {
+                if (Array.isArray(error.detail)) {
+                    // Format validation errors nicely
+                    const messages = error.detail.map(e => `${e.loc[e.loc.length - 1]}: ${e.msg}`).join(', ');
+                    throw new Error(messages);
+                } else if (typeof error.detail === 'string') {
+                    throw new Error(error.detail);
+                }
+            }
             throw new Error(error.detail || 'Encoding failed');
         }
 
