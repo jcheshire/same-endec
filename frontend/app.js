@@ -52,12 +52,15 @@ async function loadEventCodes() {
         const select = document.getElementById('event-code');
         select.innerHTML = '<option value="">Select Event Code</option>';
 
-        Object.entries(eventCodes).forEach(([code, description]) => {
-            const option = document.createElement('option');
-            option.value = code;
-            option.textContent = `${code} - ${description}`;
-            select.appendChild(option);
-        });
+        // Sort by code alphabetically
+        Object.entries(eventCodes)
+            .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
+            .forEach(([code, description]) => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = `${code} - ${description}`;
+                select.appendChild(option);
+            });
 
         // Update description on change
         select.addEventListener('change', (e) => {
