@@ -8,8 +8,11 @@ import subprocess
 import json
 import os
 import tempfile
+import logging
 from pathlib import Path
 from typing import Optional, Dict, List, Union
+
+logger = logging.getLogger(__name__)
 
 
 class SAMEDecoder:
@@ -96,6 +99,9 @@ class SAMEDecoder:
                 timeout=30
             )
 
+            logger.info(f"multimon-ng raw output: {result.stdout}")
+            logger.info(f"multimon-ng stderr: {result.stderr}")
+
             return self._parse_output(result.stdout, use_json)
 
         except subprocess.CalledProcessError as e:
@@ -167,7 +173,10 @@ class SAMEDecoder:
         }
 
         if not output.strip():
+            logger.warning("multimon-ng returned empty output")
             return result
+
+        logger.info(f"Parsing output (is_json={is_json}): {output[:200]}")
 
         if is_json:
             # Parse JSON output (one JSON object per line)
@@ -176,6 +185,7 @@ class SAMEDecoder:
                     continue
                 try:
                     data = json.loads(line)
+                    logger.info(f"Parsed JSON line: {data}")
 
                     # Check for EOM
                     if "end_of_message" in data:
@@ -185,8 +195,10 @@ class SAMEDecoder:
                     if "last_message" in data:
                         result["messages"].append(data)
                         result["success"] = True
+                        logger.info(f"Found SAME message: {data['last_message']}")
 
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse JSON line: {line} - Error: {e}")
                     continue
         else:
             # Parse text output
