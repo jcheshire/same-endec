@@ -177,8 +177,26 @@ def build_same_message(
     if not re.match(r'^\+\d{4}$', duration):
         raise ValueError("duration must be in +HHMM format (e.g., +0030)")
 
+    # Validate duration increments per SAME spec (47 CFR § 11.31):
+    # - Up to 1 hour: 15-minute increments
+    # - Beyond 1 hour: 30-minute increments
+    duration_str = duration[1:]  # Remove '+'
+    hours = int(duration_str[:2])
+    minutes = int(duration_str[2:4])
+    total_minutes = hours * 60 + minutes
+
+    if total_minutes <= 60:
+        # Up to 1 hour: must be 15-minute increments
+        if minutes not in [0, 15, 30, 45]:
+            raise ValueError(f"Duration up to 1 hour must be in 15-minute increments (00, 15, 30, 45). Got: {minutes} minutes")
+    else:
+        # Beyond 1 hour: must be 30-minute increments
+        if minutes not in [0, 30]:
+            raise ValueError(f"Duration beyond 1 hour must be in 30-minute increments (00 or 30). Got: {minutes} minutes")
+
     if timestamp is None:
-        timestamp = datetime.datetime.now().strftime("%j%H%M")
+        # Use UTC time per SAME spec (47 CFR § 11.31)
+        timestamp = datetime.datetime.utcnow().strftime("%j%H%M")
     elif not re.match(r'^\d{7}$', timestamp):
         raise ValueError("timestamp must be 7 digits (JJJHHMM format)")
 
