@@ -2,6 +2,64 @@
 
 Web application for encoding and decoding Emergency Alert System (EAS) messages using the SAME (Specific Area Message Encoding) protocol.
 
+## ⚠️ Development Status
+
+**Last Updated:** 2024-11-14
+
+### Current State
+The application is **functionally complete** with SAME encoding/decoding, county subdivision support, and automated deployment. However, there is an **active UI issue** being debugged:
+
+**Active Issue:** Subdivision selector checkbox clicks sometimes don't register reliably. The UI appears and functions partially but needs refinement.
+
+### Recent Changes (This Session)
+- ✅ Added support for SAME subdivision codes (PSSCCC format per 47 CFR § 11.31)
+- ✅ Implemented two-step county selection with subdivision picker
+- ✅ Fixed callsign field (was using originator code instead)
+- ✅ Changed default callsign to PHILLYWX
+- ✅ Added SAME protocol spec compliance (duration increments, UTC timestamps)
+- ⚠️ Subdivision selector UI partially working but needs debugging
+
+### To-Do List
+
+**High Priority:**
+1. **Fix subdivision selector checkbox click detection** - Checkboxes sometimes don't respond to clicks. Needs investigation of event handlers and propagation.
+2. **Update duration input to be less error prone** - Replace free text input with dropdowns or better validation to prevent invalid duration formats (currently requires +HHMM format with specific 15/30-minute increments)
+3. **Update subdivision selector UI styling** - Improve visual feedback, make click targets more obvious, better mobile responsiveness
+
+**Medium Priority:**
+4. Test subdivision encoding/decoding end-to-end with actual WAV files
+5. Add visual indicators for which subdivisions are selected
+6. Consider adding county subdivision map/diagram for reference
+7. Improve toast notification styling and positioning
+
+**Low Priority:**
+8. Add keyboard shortcuts for common operations
+9. Consider caching county search results
+10. Add export/import of message presets
+
+### How to Resume Development
+
+If picking this up in a new session:
+
+1. **The subdivision selector issue:** Located in `frontend/app.js` starting around line 534 (`showSubdivisionSelector` function). The click event handling needs debugging - events may be propagating incorrectly or handlers may be firing multiple times.
+
+2. **Key files modified recently:**
+   - `backend/api.py` - FIPS search with subdivision support
+   - `backend/encoder.py` - Duration validation and UTC timestamps
+   - `frontend/app.js` - Subdivision selector logic
+   - `frontend/style.css` - Subdivision selector styling
+   - `frontend/index.html` - Added subdivision-selector-container
+
+3. **Testing the subdivision feature:**
+   - Text search (e.g., "Montgomery") should show county results
+   - Clicking a county should show subdivision selector below search
+   - Toggle between "Whole County" and "Subdivisions" modes
+   - Select multiple subdivisions (S, SW, SE, E, etc.)
+   - Click "Add Selected" to add to counties list
+   - Numeric search (e.g., "124031") should bypass selector and add directly
+
+---
+
 ## 🚀 Quick Start (TL;DR)
 
 Want to run this on your server? It's simple:
@@ -34,16 +92,21 @@ Access your application at `http://your-server-ip` (or `https://your-domain.com`
 
 ### Encoding
 - **Build SAME Messages** - User-friendly form with event codes, county search, and duration
+- **County Subdivision Support** - Select specific portions of counties (NW, S, SE, etc.) per 47 CFR § 11.31
+  - Text search: Select county, then choose whole county or specific subdivisions
+  - Numeric search: Enter 6-digit FIPS codes directly (e.g., 124031 for Northwest Montgomery County)
+  - Multi-select: Pick multiple subdivisions of the same county for targeted alerts
+- **Smart County Search** - Search 3,143+ US counties by name or FIPS code with autocomplete
 - **Raw Encoding** - Encode custom SAME strings directly
-- **Preview** - See the SAME message before encoding
+- **Message Preview** - See the SAME message before encoding
 - **3-Step Output** - Header WAV + Your Audio + EOM WAV for complete broadcasts
-- **County Search** - Search 3,143+ US counties by name with autocomplete
+- **Protocol Compliance** - Validates duration increments (15-min up to 1hr, 30-min beyond) and uses UTC timestamps
 
 ### Decoding
 - **Upload WAV Files** - Decode SAME messages from audio
-- **Human-Readable Output** - Location names, readable durations, full timestamps
+- **Human-Readable Output** - Location names with subdivisions, readable durations, full timestamps
 - **Robust Parsing** - Handles noisy/partial messages gracefully
-- **FIPS Lookup** - Automatically resolves county codes to names
+- **FIPS Lookup** - Automatically resolves county codes to names and subdivision descriptions
 
 ### Security
 - **XSS Protection** - HTML escaping + Content Security Policy headers
