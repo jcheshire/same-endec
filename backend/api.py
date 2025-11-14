@@ -101,7 +101,8 @@ class EncodeRequest(BaseModel):
     location_codes: List[str] = Field(..., min_items=1, max_items=31, description="List of 6-digit FIPS location codes")
     duration: str = Field(..., pattern=r'^\+\d{4}$', description="Duration in +HHMM format (e.g., +0030)")
     timestamp: Optional[str] = Field(None, pattern=r'^\d{7}$', description="Optional JJJHHMM timestamp")
-    originator: str = Field("SCIENCE", min_length=1, max_length=8, description="Originator callsign/identifier")
+    originator: Optional[str] = Field(None, min_length=3, max_length=3, description="Originator code (WXR, CIV, PEP, EAS) - auto-determined if not provided")
+    callsign: Optional[str] = Field(None, min_length=1, max_length=8, description="Station callsign/identifier (e.g., PHILLYWX)")
 
     class Config:
         json_schema_extra = {
@@ -110,7 +111,8 @@ class EncodeRequest(BaseModel):
                 "location_codes": ["024031"],
                 "duration": "+0030",
                 "timestamp": None,
-                "originator": "SCIENCE"
+                "originator": "WXR",
+                "callsign": "SCIENCE"
             }
         }
 
@@ -161,7 +163,7 @@ async def encode_message(request: Request, encode_request: EncodeRequest):
             location_codes=encode_request.location_codes,
             duration=encode_request.duration,
             timestamp=encode_request.timestamp,
-            originator=encode_request.originator
+            originator=encode_request.callsign or "SCIENCE"  # Use callsign field, default to SCIENCE
         )
 
         # Encode to WAV bytes (header only, no EOM)
@@ -230,7 +232,7 @@ async def encode_preview(request: Request, encode_request: EncodeRequest):
             location_codes=encode_request.location_codes,
             duration=encode_request.duration,
             timestamp=encode_request.timestamp,
-            originator=encode_request.originator
+            originator=encode_request.callsign or "SCIENCE"  # Use callsign field, default to SCIENCE
         )
 
         return MessageResponse(
