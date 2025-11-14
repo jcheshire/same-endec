@@ -102,10 +102,17 @@ function initializeEncodingForm() {
 async function handlePreview(e) {
     e.preventDefault();
 
+    // Validate location codes
+    const locationCodesValue = document.getElementById('location-codes').value;
+    if (!locationCodesValue || locationCodesValue.trim() === '') {
+        showError('Please select at least one county');
+        return;
+    }
+
     const data = {
         event_code: document.getElementById('event-code').value,
         originator: document.getElementById('originator').value,
-        location_codes: document.getElementById('location-codes').value.split(',').map(s => s.trim()),
+        location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
         duration: document.getElementById('duration').value,
         callsign: document.getElementById('callsign').value || undefined
     };
@@ -132,7 +139,14 @@ async function handlePreview(e) {
         previewOutput.classList.remove('hidden');
 
     } catch (error) {
-        showError('Preview failed: ' + error.message);
+        // Handle different error types
+        let errorMsg = 'Preview failed';
+        if (error.message && typeof error.message === 'string') {
+            errorMsg += ': ' + error.message;
+        } else if (error.detail) {
+            errorMsg += ': ' + error.detail;
+        }
+        showError(errorMsg);
     } finally {
         showLoading(false);
     }
@@ -142,10 +156,17 @@ async function handlePreview(e) {
 async function handleEncode(e) {
     e.preventDefault();
 
+    // Validate location codes
+    const locationCodesValue = document.getElementById('location-codes').value;
+    if (!locationCodesValue || locationCodesValue.trim() === '') {
+        showError('Please select at least one county');
+        return;
+    }
+
     const data = {
         event_code: document.getElementById('event-code').value,
         originator: document.getElementById('originator').value,
-        location_codes: document.getElementById('location-codes').value.split(',').map(s => s.trim()),
+        location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
         duration: document.getElementById('duration').value,
         callsign: document.getElementById('callsign').value || undefined
     };
@@ -409,7 +430,8 @@ function initializeLocationLookup() {
 
     // Update hidden input with comma-separated FIPS codes
     function updateHiddenInput() {
-        hiddenInput.value = selectedCounties.map(c => c.fips).join(',');
+        // Pad FIPS codes to 6 digits (SAME protocol requires PSSCCC format)
+        hiddenInput.value = selectedCounties.map(c => c.fips.padStart(6, '0')).join(',');
     }
 }
 
