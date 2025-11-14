@@ -356,6 +356,14 @@ async function handleDecode(e) {
                 const p = msg.parsed;
                 html += `<div class="decoded-message">`;
 
+                // Show warning if message is partial
+                if (p.partial) {
+                    html += `<div class="decode-warning">`;
+                    html += `<strong>⚠️ Partial Message Detected</strong>`;
+                    html += `<p>This message may be incomplete due to audio quality or decoding issues. Some information may be missing.</p>`;
+                    html += `</div>`;
+                }
+
                 // Event information
                 html += `<div class="decode-section">`;
                 html += `<h4>Event Type</h4>`;
