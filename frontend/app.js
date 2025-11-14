@@ -577,6 +577,11 @@ function initializeLocationLookup() {
 
         selectorDiv.classList.remove('hidden');
 
+        // Prevent clicks inside selector from closing it
+        selectorDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
         // Toggle between whole county and subdivisions
         const toggleBtns = selectorDiv.querySelectorAll('.toggle-btn');
         const subdivisionGrid = selectorDiv.querySelector('.subdivision-grid');
@@ -592,6 +597,18 @@ function initializeLocationLookup() {
                     checkboxes.forEach(cb => cb.checked = false);
                 } else {
                     subdivisionGrid.classList.remove('disabled');
+                }
+            });
+        });
+
+        // Make wrapper divs toggle checkboxes when clicked
+        selectorDiv.querySelectorAll('.subdivision-checkbox-wrapper').forEach(wrapper => {
+            wrapper.addEventListener('click', (e) => {
+                // If clicking the checkbox itself, let it handle naturally
+                if (e.target.tagName !== 'INPUT') {
+                    const checkbox = wrapper.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change'));
                 }
             });
         });
