@@ -218,21 +218,24 @@ async function handleEncode(e) {
             throw new Error(error.detail || 'Encoding failed');
         }
 
-        // Get WAV file as blob
+        // Get header WAV file as blob
         const blob = await response.blob();
         currentAudioBlob = blob;
 
-        // Display audio player
-        const audioPlayer = document.getElementById('audio-player');
+        // Display header audio player
+        const headerAudio = document.getElementById('header-audio');
         const audioURL = URL.createObjectURL(blob);
-        audioPlayer.src = audioURL;
+        headerAudio.src = audioURL;
 
         const encodeOutput = document.getElementById('encode-output');
         encodeOutput.classList.remove('hidden');
 
         // Setup download button
-        const downloadBtn = document.getElementById('download-btn');
-        downloadBtn.onclick = () => downloadWAV(blob, 'same_message.wav');
+        const downloadBtn = document.getElementById('download-header-btn');
+        downloadBtn.onclick = () => downloadWAV(blob, 'same_header.wav');
+
+        // Scroll to output
+        encodeOutput.scrollIntoView({ behavior: 'smooth' });
 
     } catch (error) {
         showError('Encoding failed: ' + error.message);
@@ -258,7 +261,7 @@ async function handleRawEncode(e) {
         const response = await fetch(`${API_BASE}/encode/raw`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({ same_string: message })
         });
 
         if (!response.ok) {
@@ -276,21 +279,21 @@ async function handleRawEncode(e) {
             throw new Error(error.detail || 'Encoding failed');
         }
 
-        // Get WAV file as blob
+        // Get header WAV file as blob
         const blob = await response.blob();
         currentAudioBlob = blob;
 
-        // Display audio player
-        const audioPlayer = document.getElementById('audio-player');
+        // Display header audio player
+        const headerAudio = document.getElementById('header-audio');
         const audioURL = URL.createObjectURL(blob);
-        audioPlayer.src = audioURL;
+        headerAudio.src = audioURL;
 
         const encodeOutput = document.getElementById('encode-output');
         encodeOutput.classList.remove('hidden');
 
         // Setup download button
-        const downloadBtn = document.getElementById('download-btn');
-        downloadBtn.onclick = () => downloadWAV(blob, 'same_message.wav');
+        const downloadBtn = document.getElementById('download-header-btn');
+        downloadBtn.onclick = () => downloadWAV(blob, 'same_header.wav');
 
         // Scroll to output
         encodeOutput.scrollIntoView({ behavior: 'smooth' });

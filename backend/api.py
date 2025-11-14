@@ -134,15 +134,15 @@ async def encode_message(request: Request, encode_request: EncodeRequest):
             originator=encode_request.originator
         )
 
-        # Encode to WAV bytes
-        wav_data = encoder.encode(same_string)
+        # Encode to WAV bytes (header only, no EOM)
+        wav_data = encoder.encode(same_string, include_eom=False)
 
         # Return as downloadable WAV file
         return Response(
             content=wav_data,
             media_type="audio/wav",
             headers={
-                "Content-Disposition": f"attachment; filename=same_{encode_request.event_code}.wav"
+                "Content-Disposition": f"attachment; filename=same_{encode_request.event_code}_header.wav"
             }
         )
 
@@ -165,15 +165,15 @@ async def encode_raw_message(request: Request, encode_request: EncodeRawRequest)
     Returns the WAV file as audio/wav binary data
     """
     try:
-        # Encode to WAV bytes
-        wav_data = encoder.encode(encode_request.same_string)
+        # Encode to WAV bytes (header only, no EOM)
+        wav_data = encoder.encode(encode_request.same_string, include_eom=False)
 
         # Return as downloadable WAV file
         return Response(
             content=wav_data,
             media_type="audio/wav",
             headers={
-                "Content-Disposition": "attachment; filename=same_custom.wav"
+                "Content-Disposition": "attachment; filename=same_custom_header.wav"
             }
         )
 

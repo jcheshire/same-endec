@@ -39,3 +39,5 @@ htmlcov/
 *.wav
 backend/*.wav
 frontend/*.wav
+# Exception: Allow static EOM file
+!frontend/eom.wav
