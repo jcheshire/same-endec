@@ -294,42 +294,123 @@ async function handleDecode(e) {
     }
 }
 
-// Location code lookup (debounced)
+// County search with autocomplete
 function initializeLocationLookup() {
-    const input = document.getElementById('location-codes');
-    const lookupDiv = document.getElementById('location-lookup');
+    const searchInput = document.getElementById('county-search');
+    const searchResults = document.getElementById('search-results');
+    const selectedCountiesDiv = document.getElementById('selected-counties');
+    const hiddenInput = document.getElementById('location-codes');
+
+    let selectedCounties = [];
     let debounceTimer;
 
-    input.addEventListener('input', () => {
+    // Search as user types
+    searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
+        const query = searchInput.value.trim();
+
+        if (query.length < 2) {
+            searchResults.classList.add('hidden');
+            return;
+        }
+
         debounceTimer = setTimeout(async () => {
-            const codes = input.value.split(',').map(s => s.trim()).filter(s => s.length === 6);
+            try {
+                const response = await fetch(`${API_BASE}/fips-search?q=${encodeURIComponent(query)}&limit=20`);
+                if (!response.ok) throw new Error('Search failed');
 
-            if (codes.length === 0) {
-                lookupDiv.innerHTML = '';
-                return;
-            }
+                const data = await response.json();
 
-            lookupDiv.innerHTML = 'Looking up locations...';
-            const results = [];
-
-            for (const code of codes) {
-                try {
-                    const response = await fetch(`${API_BASE}/fips-lookup/${code}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        results.push(`${code}: ${data.location || 'Unknown'}`);
-                    } else {
-                        results.push(`${code}: Not found`);
-                    }
-                } catch (error) {
-                    results.push(`${code}: Error`);
+                if (data.results.length === 0) {
+                    searchResults.innerHTML = '<div class="search-result-item no-results">No counties found</div>';
+                    searchResults.classList.remove('hidden');
+                    return;
                 }
-            }
 
-            lookupDiv.innerHTML = results.join('<br>');
-        }, 500);
+                // Display results
+                searchResults.innerHTML = data.results.map(county => {
+                    const alreadySelected = selectedCounties.some(c => c.fips === county.fips);
+                    return `
+                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}" data-fips="${county.fips}" data-name="${county.name}" data-state="${county.state}">
+                            ${county.name}, ${county.state} <span class="fips-code">(${county.fips})</span>
+                        </div>
+                    `;
+                }).join('');
+
+                searchResults.classList.remove('hidden');
+
+                // Add click handlers
+                searchResults.querySelectorAll('.search-result-item:not(.disabled):not(.no-results)').forEach(item => {
+                    item.addEventListener('click', () => {
+                        addCounty({
+                            fips: item.dataset.fips,
+                            name: item.dataset.name,
+                            state: item.dataset.state
+                        });
+                        searchInput.value = '';
+                        searchResults.classList.add('hidden');
+                    });
+                });
+
+            } catch (error) {
+                searchResults.innerHTML = '<div class="search-result-item no-results">Search error</div>';
+                searchResults.classList.remove('hidden');
+            }
+        }, 300);
     });
+
+    // Close results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.classList.add('hidden');
+        }
+    });
+
+    // Add county to selection
+    function addCounty(county) {
+        // Check if already added
+        if (selectedCounties.some(c => c.fips === county.fips)) {
+            return;
+        }
+
+        selectedCounties.push(county);
+        updateSelectedCountiesDisplay();
+        updateHiddenInput();
+    }
+
+    // Remove county from selection
+    function removeCounty(fips) {
+        selectedCounties = selectedCounties.filter(c => c.fips !== fips);
+        updateSelectedCountiesDisplay();
+        updateHiddenInput();
+    }
+
+    // Update the visual display of selected counties
+    function updateSelectedCountiesDisplay() {
+        if (selectedCounties.length === 0) {
+            selectedCountiesDiv.innerHTML = '<span class="help-text">No counties selected. Search and click to add.</span>';
+            return;
+        }
+
+        selectedCountiesDiv.innerHTML = selectedCounties.map(county => `
+            <span class="county-tag">
+                ${county.name}, ${county.state} (${county.fips})
+                <button type="button" class="remove-county" data-fips="${county.fips}">&times;</button>
+            </span>
+        `).join('');
+
+        // Add remove handlers
+        selectedCountiesDiv.querySelectorAll('.remove-county').forEach(btn => {
+            btn.addEventListener('click', () => {
+                removeCounty(btn.dataset.fips);
+            });
+        });
+    }
+
+    // Update hidden input with comma-separated FIPS codes
+    function updateHiddenInput() {
+        hiddenInput.value = selectedCounties.map(c => c.fips).join(',');
+    }
 }
 
 // Download WAV file
