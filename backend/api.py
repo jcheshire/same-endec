@@ -539,6 +539,9 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
         sql = 'SELECT fips, name, state, type FROM fips_codes WHERE type = "county"'
         params = []
 
+        # Track subdivision code if user searched with 6-digit code
+        user_subdivision = None
+
         if q:
             # Smart detection: is this a FIPS code (numeric) or county name (text)?
             if q.strip().isdigit():
@@ -547,8 +550,8 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
                 fips_query = q.strip()
                 if len(fips_query) == 6:
                     # 6-digit code: validate first digit is 0-9 (subdivision code)
-                    subdivision = fips_query[0]
-                    if subdivision not in '0123456789':
+                    user_subdivision = fips_query[0]
+                    if user_subdivision not in '0123456789':
                         raise HTTPException(status_code=400, detail="Invalid subdivision code (must be 0-9)")
                     # Use last 5 digits for database lookup
                     fips_query = fips_query[1:]
@@ -577,12 +580,15 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
         rows = cursor.fetchall()
         conn.close()
 
+        # Use user's subdivision code if they searched with 6-digit, otherwise default to 0
+        subdivision_prefix = user_subdivision if user_subdivision is not None else '0'
+
         results = [
             {
-                "fips": '0' + row['fips'].zfill(5),  # Prepend 0 for whole county, pad to 5 digits
+                "fips": subdivision_prefix + row['fips'].zfill(5),  # Use user's subdivision or default to 0
                 "name": row['name'],
                 "state": row['state'],
-                "display": f"{row['name']}, {row['state']} (0{row['fips'].zfill(5)})"
+                "display": f"{row['name']}, {row['state']} ({subdivision_prefix}{row['fips'].zfill(5)})"
             }
             for row in rows
         ]
