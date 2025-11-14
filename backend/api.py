@@ -582,18 +582,35 @@ async def fips_search(request: Request, q: str = "", state: str = "", limit: int
         rows = cursor.fetchall()
         conn.close()
 
-        # Use user's subdivision code if they searched with 6-digit, otherwise default to 0
-        subdivision_prefix = user_subdivision if user_subdivision is not None else '0'
+        results = []
 
-        results = [
-            {
-                "fips": subdivision_prefix + row['fips'].zfill(5),  # Use user's subdivision or default to 0
-                "name": row['name'],
-                "state": row['state'],
-                "display": f"{row['name']}, {row['state']} ({subdivision_prefix}{row['fips'].zfill(5)})"
-            }
-            for row in rows
-        ]
+        # If numeric search, preserve the user's subdivision code
+        # If text search, default to whole county (subdivision 0)
+        if q and q.strip().isdigit():
+            # Numeric search - show only the specific code entered
+            subdivision_prefix = user_subdivision if user_subdivision is not None else '0'
+            for row in rows:
+                fips_base = row['fips'].zfill(5)
+                results.append({
+                    "fips": subdivision_prefix + fips_base,
+                    "name": row['name'],
+                    "state": row['state'],
+                    "subdivision": None if subdivision_prefix == '0' else get_subdivision_description(subdivision_prefix),
+                    "display": f"{row['name']}, {row['state']} ({subdivision_prefix}{fips_base})"
+                })
+        else:
+            # Text search - default to whole county (subdivision 0)
+            # Users can manually search by 6-digit code if they want a specific subdivision
+            for row in rows:
+                fips_base = row['fips'].zfill(5)
+                results.append({
+                    "fips": '0' + fips_base,
+                    "name": row['name'],
+                    "state": row['state'],
+                    "subdivision": None,
+                    "display": f"{row['name']}, {row['state']} (0{fips_base})"
+                })
+
 
         return {
             "results": results,

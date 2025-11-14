@@ -480,12 +480,13 @@ function initializeLocationLookup() {
                 }
 
                 // Display results
-                searchResults.innerHTML = data.results.map(county => {
+                searchResults.innerHTML = data.results.map((county, index) => {
                     const alreadySelected = selectedCounties.some(c => c.fips === county.fips);
                     return `
-                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}" data-fips="${county.fips}" data-name="${county.name}" data-state="${county.state}">
+                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}" data-fips="${county.fips}" data-name="${county.name}" data-state="${county.state}" data-index="${index}">
                             ${county.name}, ${county.state} <span class="fips-code">(${county.fips})</span>
                         </div>
+                        <div id="subdivision-selector-${index}" class="subdivision-selector hidden"></div>
                     `;
                 }).join('');
 
@@ -494,13 +495,25 @@ function initializeLocationLookup() {
                 // Add click handlers
                 searchResults.querySelectorAll('.search-result-item:not(.disabled):not(.no-results)').forEach(item => {
                     item.addEventListener('click', () => {
-                        addCounty({
-                            fips: item.dataset.fips,
-                            name: item.dataset.name,
-                            state: item.dataset.state
-                        });
-                        searchInput.value = '';
-                        searchResults.classList.add('hidden');
+                        const isNumericSearch = query.trim() && !isNaN(query.trim());
+
+                        if (isNumericSearch) {
+                            // Numeric search - add directly without subdivision selector
+                            addCounty({
+                                fips: item.dataset.fips,
+                                name: item.dataset.name,
+                                state: item.dataset.state
+                            });
+                            searchInput.value = '';
+                            searchResults.classList.add('hidden');
+                        } else {
+                            // Text search - show subdivision selector
+                            showSubdivisionSelector(item.dataset.index, {
+                                fips: item.dataset.fips,
+                                name: item.dataset.name,
+                                state: item.dataset.state
+                            });
+                        }
                     });
                 });
 
@@ -517,6 +530,130 @@ function initializeLocationLookup() {
             searchResults.classList.add('hidden');
         }
     });
+
+    // Show subdivision selector for a county
+    function showSubdivisionSelector(index, county) {
+        const selectorDiv = document.getElementById(`subdivision-selector-${index}`);
+
+        // Build subdivision selector HTML
+        const baseFips = county.fips.substring(1); // Remove leading 0 to get base 5-digit code
+        const subdivisions = [
+            { code: '1', name: 'Northwest' },
+            { code: '2', name: 'North' },
+            { code: '3', name: 'Northeast' },
+            { code: '4', name: 'West' },
+            { code: '5', name: 'Central' },
+            { code: '6', name: 'East' },
+            { code: '7', name: 'Southwest' },
+            { code: '8', name: 'South' },
+            { code: '9', name: 'Southeast' }
+        ];
+
+        selectorDiv.innerHTML = `
+            <div class="subdivision-selector-header">${county.name}, ${county.state}</div>
+
+            <div class="coverage-toggle">
+                <button type="button" class="toggle-btn active" data-mode="whole">Whole County</button>
+                <button type="button" class="toggle-btn" data-mode="subdivisions">Subdivisions</button>
+            </div>
+
+            <div class="subdivision-grid disabled">
+                ${subdivisions.map(sub => `
+                    <div class="subdivision-checkbox-wrapper">
+                        <input type="checkbox" id="sub-${index}-${sub.code}" value="${sub.code}" data-name="${sub.name}">
+                        <label for="sub-${index}-${sub.code}">${sub.name}</label>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="subdivision-actions">
+                <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
+                <button type="button" class="btn btn-primary add-btn">Add Selected</button>
+            </div>
+        `;
+
+        selectorDiv.classList.remove('hidden');
+
+        // Toggle between whole county and subdivisions
+        const toggleBtns = selectorDiv.querySelectorAll('.toggle-btn');
+        const subdivisionGrid = selectorDiv.querySelector('.subdivision-grid');
+        const checkboxes = selectorDiv.querySelectorAll('input[type="checkbox"]');
+
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                toggleBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                if (btn.dataset.mode === 'whole') {
+                    subdivisionGrid.classList.add('disabled');
+                    checkboxes.forEach(cb => cb.checked = false);
+                } else {
+                    subdivisionGrid.classList.remove('disabled');
+                }
+            });
+        });
+
+        // Check if all subdivisions are selected -> auto-switch to whole county
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const checkedCount = Array.from(checkboxes).filter(c => c.checked).length;
+                if (checkedCount === 9) {
+                    // All selected - switch to whole county
+                    toggleBtns[0].click(); // Click "Whole County" button
+                    showToast('All subdivisions selected, using whole county');
+                }
+            });
+        });
+
+        // Cancel button
+        selectorDiv.querySelector('.cancel-btn').addEventListener('click', () => {
+            selectorDiv.classList.add('hidden');
+        });
+
+        // Add button
+        selectorDiv.querySelector('.add-btn').addEventListener('click', () => {
+            const mode = selectorDiv.querySelector('.toggle-btn.active').dataset.mode;
+
+            if (mode === 'whole') {
+                // Add whole county
+                addCounty({
+                    fips: '0' + baseFips,
+                    name: county.name,
+                    state: county.state
+                });
+            } else {
+                // Add selected subdivisions
+                const selected = Array.from(checkboxes).filter(cb => cb.checked);
+                if (selected.length === 0) {
+                    showToast('Please select at least one subdivision');
+                    return;
+                }
+
+                selected.forEach(cb => {
+                    addCounty({
+                        fips: cb.value + baseFips,
+                        name: county.name,
+                        state: county.state,
+                        subdivision: cb.dataset.name
+                    });
+                });
+            }
+
+            selectorDiv.classList.add('hidden');
+            searchInput.value = '';
+            searchResults.classList.add('hidden');
+        });
+    }
+
+    // Show toast notification
+    function showToast(message) {
+        // Simple toast - could be enhanced with better styling
+        const toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #333; color: white; padding: 1rem; border-radius: 0.375rem; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
 
     // Add county to selection
     function addCounty(county) {
@@ -544,12 +681,18 @@ function initializeLocationLookup() {
             return;
         }
 
-        selectedCountiesDiv.innerHTML = selectedCounties.map(county => `
-            <span class="county-tag">
-                ${county.name}, ${county.state} (${county.fips})
-                <button type="button" class="remove-county" data-fips="${county.fips}">&times;</button>
-            </span>
-        `).join('');
+        selectedCountiesDiv.innerHTML = selectedCounties.map(county => {
+            const displayName = county.subdivision
+                ? `${county.name}, ${county.state} - ${county.subdivision}`
+                : `${county.name}, ${county.state}`;
+
+            return `
+                <span class="county-tag">
+                    ${displayName} (${county.fips})
+                    <button type="button" class="remove-county" data-fips="${county.fips}">&times;</button>
+                </span>
+            `;
+        }).join('');
 
         // Add remove handlers
         selectedCountiesDiv.querySelectorAll('.remove-county').forEach(btn => {
