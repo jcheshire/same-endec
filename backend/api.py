@@ -314,12 +314,8 @@ async def get_event_codes():
         "VOW": "Volcano Warning"
     }
 
-    return {
-        "event_codes": [
-            {"code": code, "description": desc}
-            for code, desc in event_codes.items()
-        ]
-    }
+    # Return as simple key-value pairs for frontend dropdown
+    return event_codes
 
 
 @app.get("/api/fips-lookup/{code}")
