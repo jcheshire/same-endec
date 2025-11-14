@@ -621,6 +621,83 @@ header p {
     color: #856404;
 }
 
+/* Decoded Message Display */
+.decoded-message {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.decode-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.decode-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.decode-section h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 0.05em;
+}
+
+.decode-section p {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin: 0.25rem 0;
+}
+
+.decode-highlight {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.decode-detail {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.location-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+}
+
+.location-list li {
+    padding: 0.5rem 0.75rem;
+    background-color: var(--bg-color);
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9375rem;
+}
+
+.location-list li:last-child {
+    margin-bottom: 0;
+}
+
+.decode-section code {
+    display: block;
+    background-color: var(--bg-color);
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    overflow-x: auto;
+}
+
 /* Hidden Utility */
 .hidden {
     display: none !important;

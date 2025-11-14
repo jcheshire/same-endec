@@ -349,7 +349,77 @@ async function handleDecode(e) {
         const decodeOutput = document.getElementById('decode-output');
         const decodeText = document.getElementById('decode-text');
 
-        decodeText.textContent = JSON.stringify(result, null, 2);
+        // Format the decoded message nicely
+        if (result.success && result.messages.length > 0) {
+            let html = '';
+            result.messages.forEach((msg, index) => {
+                const p = msg.parsed;
+                html += `<div class="decoded-message">`;
+
+                // Event information
+                html += `<div class="decode-section">`;
+                html += `<h4>Event Type</h4>`;
+                html += `<p class="decode-highlight">${p.event_description || p.event || 'Unknown'}</p>`;
+                if (p.event) {
+                    html += `<p class="decode-detail">Code: ${p.event}</p>`;
+                }
+                html += `</div>`;
+
+                // Originator
+                html += `<div class="decode-section">`;
+                html += `<h4>Issued By</h4>`;
+                html += `<p>${p.org_description || p.org || 'Unknown'}</p>`;
+                if (p.org && p.org_description) {
+                    html += `<p class="decode-detail">Originator: ${p.org}</p>`;
+                }
+                html += `</div>`;
+
+                // Locations
+                if (p.location_details && p.location_details.length > 0) {
+                    html += `<div class="decode-section">`;
+                    html += `<h4>Affected Areas</h4>`;
+                    html += `<ul class="location-list">`;
+                    p.location_details.forEach(loc => {
+                        html += `<li>${loc.name}, ${loc.state} <span class="fips-code">(${loc.fips})</span></li>`;
+                    });
+                    html += `</ul>`;
+                    html += `</div>`;
+                }
+
+                // Duration
+                if (p.duration_readable) {
+                    html += `<div class="decode-section">`;
+                    html += `<h4>Duration</h4>`;
+                    html += `<p>${p.duration_readable}</p>`;
+                    html += `<p class="decode-detail">Code: ${p.duration}</p>`;
+                    html += `</div>`;
+                }
+
+                // Timestamp
+                if (p.timestamp_readable) {
+                    html += `<div class="decode-section">`;
+                    html += `<h4>Issued</h4>`;
+                    html += `<p>${p.timestamp_readable}</p>`;
+                    if (p.originator) {
+                        html += `<p class="decode-detail">Callsign: ${p.originator}</p>`;
+                    }
+                    html += `</div>`;
+                }
+
+                // Raw message
+                html += `<div class="decode-section">`;
+                html += `<h4>Raw SAME Message</h4>`;
+                html += `<code>${msg.raw}</code>`;
+                html += `</div>`;
+
+                html += `</div>`;
+            });
+
+            decodeText.innerHTML = html;
+        } else {
+            decodeText.textContent = JSON.stringify(result, null, 2);
+        }
+
         decodeOutput.classList.remove('hidden');
 
         // Scroll to output

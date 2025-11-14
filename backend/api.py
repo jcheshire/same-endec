@@ -6,11 +6,12 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 import uvicorn
 import logging
 import sqlite3
 import os
+from datetime import datetime, timezone, timedelta
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -218,6 +219,156 @@ async def encode_preview(request: Request, encode_request: EncodeRequest):
         raise HTTPException(status_code=500, detail="Preview failed due to server error")
 
 
+def enrich_parsed_message(parsed: Dict) -> Dict:
+    """
+    Enrich a parsed SAME message with human-readable information
+
+    Args:
+        parsed: Dictionary with parsed SAME components
+
+    Returns:
+        Dictionary with enriched data including location names, readable duration, etc.
+    """
+    enriched = parsed.copy()
+
+    # Decode event code
+    event_codes = get_event_codes_dict()
+    if parsed.get("event"):
+        enriched["event_description"] = event_codes.get(parsed["event"], "Unknown Event")
+
+    # Decode originator
+    originators = {
+        "WXR": "National Weather Service",
+        "PEP": "Primary Entry Point",
+        "CIV": "Civil Authority",
+        "EAS": "EAS Participant"
+    }
+    if parsed.get("org"):
+        enriched["org_description"] = originators.get(parsed["org"], parsed["org"])
+
+    # Decode locations using FIPS database
+    if parsed.get("locations"):
+        location_details = []
+        conn = get_db()
+        cursor = conn.cursor()
+        for fips in parsed["locations"]:
+            # Pad to 6 digits
+            fips_padded = fips.zfill(6)
+            cursor.execute('SELECT name, state FROM fips_codes WHERE fips = ? AND type = "county"', (fips_padded,))
+            row = cursor.fetchone()
+            if row:
+                location_details.append({
+                    "fips": fips_padded,
+                    "name": row['name'],
+                    "state": row['state']
+                })
+            else:
+                location_details.append({
+                    "fips": fips_padded,
+                    "name": "Unknown",
+                    "state": "Unknown"
+                })
+        conn.close()
+        enriched["location_details"] = location_details
+
+    # Decode duration
+    if parsed.get("duration"):
+        try:
+            # Duration format: +HHMM
+            duration_str = parsed["duration"].lstrip('+')
+            hours = int(duration_str[:2])
+            minutes = int(duration_str[2:4])
+            total_minutes = hours * 60 + minutes
+
+            if hours > 0 and minutes > 0:
+                enriched["duration_readable"] = f"{hours} hour{'s' if hours != 1 else ''}, {minutes} minute{'s' if minutes != 1 else ''}"
+            elif hours > 0:
+                enriched["duration_readable"] = f"{hours} hour{'s' if hours != 1 else ''}"
+            else:
+                enriched["duration_readable"] = f"{minutes} minute{'s' if minutes != 1 else ''}"
+
+            enriched["duration_minutes"] = total_minutes
+        except (ValueError, IndexError):
+            pass
+
+    # Decode timestamp (Julian day + time)
+    if parsed.get("timestamp"):
+        try:
+            timestamp_str = parsed["timestamp"]
+            if len(timestamp_str) == 7:
+                julian_day = int(timestamp_str[:3])
+                hour = int(timestamp_str[3:5])
+                minute = int(timestamp_str[5:7])
+
+                # Get current year to calculate date from Julian day
+                current_year = datetime.now(timezone.utc).year
+                date = datetime(current_year, 1, 1, tzinfo=timezone.utc) + \
+                       timedelta(days=julian_day - 1, hours=hour, minutes=minute)
+
+                enriched["timestamp_readable"] = date.strftime("%B %d, %Y at %H:%M UTC")
+                enriched["timestamp_iso"] = date.isoformat()
+        except (ValueError, IndexError):
+            pass
+
+    return enriched
+
+
+def get_event_codes_dict() -> Dict[str, str]:
+    """Get event codes as a dictionary"""
+    return {
+        "TOR": "Tornado Warning",
+        "SVR": "Severe Thunderstorm Warning",
+        "EAN": "Emergency Action Notification",
+        "EAT": "Emergency Action Termination",
+        "NIC": "National Information Center",
+        "NPT": "National Periodic Test",
+        "RMT": "Required Monthly Test",
+        "RWT": "Required Weekly Test",
+        "TOE": "911 Telephone Outage Emergency",
+        "ADR": "Administrative Message",
+        "AVW": "Avalanche Warning",
+        "AVA": "Avalanche Watch",
+        "BZW": "Blizzard Warning",
+        "CAE": "Child Abduction Emergency",
+        "CDW": "Civil Danger Warning",
+        "CEM": "Civil Emergency Message",
+        "CFW": "Coastal Flood Warning",
+        "CFA": "Coastal Flood Watch",
+        "DSW": "Dust Storm Warning",
+        "EQW": "Earthquake Warning",
+        "EVI": "Evacuation Immediate",
+        "FRW": "Fire Warning",
+        "FFW": "Flash Flood Warning",
+        "FFA": "Flash Flood Watch",
+        "FFS": "Flash Flood Statement",
+        "FLW": "Flood Warning",
+        "FLA": "Flood Watch",
+        "FLS": "Flood Statement",
+        "HMW": "Hazardous Materials Warning",
+        "HUW": "Hurricane Warning",
+        "HUA": "Hurricane Watch",
+        "HWW": "High Wind Warning",
+        "HWA": "High Wind Watch",
+        "LAE": "Local Area Emergency",
+        "LEW": "Law Enforcement Warning",
+        "NAT": "National Audible Test",
+        "NMN": "Network Message Notification",
+        "SPW": "Shelter in Place Warning",
+        "SMW": "Special Marine Warning",
+        "SPS": "Special Weather Statement",
+        "SSA": "Storm Surge Watch",
+        "SSW": "Storm Surge Warning",
+        "TOA": "Tornado Watch",
+        "TRW": "Tropical Storm Warning",
+        "TRA": "Tropical Storm Watch",
+        "TSW": "Tsunami Warning",
+        "TSA": "Tsunami Watch",
+        "VOW": "Volcano Warning",
+        "WSW": "Winter Storm Warning",
+        "WSA": "Winter Storm Watch"
+    }
+
+
 @app.post("/api/decode")
 @limiter.limit("5/minute")
 async def decode_message(request: Request, file: UploadFile = File(...)):
@@ -255,14 +406,15 @@ async def decode_message(request: Request, file: UploadFile = File(...)):
                 }
             )
 
-        # Parse decoded messages
+        # Parse and enrich decoded messages
         parsed_messages = []
         for msg in result["messages"]:
             if "last_message" in msg:
                 parsed = decoder.parse_same_message(msg["last_message"])
+                enriched = enrich_parsed_message(parsed)
                 parsed_messages.append({
                     "raw": msg["last_message"],
-                    "parsed": parsed
+                    "parsed": enriched
                 })
 
         return {
@@ -289,44 +441,8 @@ async def get_event_codes():
     """
     Get list of common EAS event codes with descriptions
     """
-    event_codes = {
-        "TOR": "Tornado Warning",
-        "SVR": "Severe Thunderstorm Warning",
-        "FFW": "Flash Flood Warning",
-        "EVI": "Evacuation Immediate",
-        "EAN": "Emergency Action Notification",
-        "EAT": "Emergency Action Termination",
-        "NIC": "National Information Center",
-        "NPT": "National Periodic Test",
-        "RMT": "Required Monthly Test",
-        "RWT": "Required Weekly Test",
-        "ADR": "Administrative Message",
-        "AVW": "Avalanche Warning",
-        "BZW": "Blizzard Warning",
-        "CAE": "Child Abduction Emergency",
-        "CDW": "Civil Danger Warning",
-        "CEM": "Civil Emergency Message",
-        "CFA": "Coastal Flood Watch",
-        "CFW": "Coastal Flood Warning",
-        "DMO": "Demo Warning",
-        "DSW": "Dust Storm Warning",
-        "EQW": "Earthquake Warning",
-        "EWW": "Extreme Wind Warning",
-        "FRW": "Fire Warning",
-        "HMW": "Hazardous Materials Warning",
-        "HUW": "Hurricane Warning",
-        "LEW": "Law Enforcement Warning",
-        "NAT": "National Audible Test",
-        "NMN": "Network Message Notification",
-        "NUW": "Nuclear Power Plant Warning",
-        "SPW": "Shelter in Place Warning",
-        "TOE": "911 Outage Emergency",
-        "TSW": "Tsunami Warning",
-        "VOW": "Volcano Warning"
-    }
-
     # Return as simple key-value pairs for frontend dropdown
-    return event_codes
+    return get_event_codes_dict()
 
 
 @app.get("/api/fips-search")
