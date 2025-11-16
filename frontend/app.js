@@ -562,10 +562,10 @@ function initializeLocationLookup() {
 
             <div class="subdivision-grid disabled">
                 ${subdivisions.map(sub => `
-                    <div class="subdivision-checkbox-wrapper">
-                        <input type="checkbox" id="sub-${sub.code}" value="${sub.code}" data-name="${sub.name}">
-                        <label for="sub-${sub.code}">${sub.name}</label>
-                    </div>
+                    <label class="subdivision-checkbox-wrapper">
+                        <input type="checkbox" value="${sub.code}" data-name="${sub.name}">
+                        <span class="subdivision-label">${sub.name}</span>
+                    </label>
                 `).join('')}
             </div>
 
@@ -576,11 +576,6 @@ function initializeLocationLookup() {
         `;
 
         selectorDiv.classList.remove('hidden');
-
-        // Prevent clicks inside selector from closing it
-        selectorDiv.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
 
         // Toggle between whole county and subdivisions
         const toggleBtns = selectorDiv.querySelectorAll('.toggle-btn');
@@ -594,21 +589,13 @@ function initializeLocationLookup() {
 
                 if (btn.dataset.mode === 'whole') {
                     subdivisionGrid.classList.add('disabled');
-                    checkboxes.forEach(cb => cb.checked = false);
+                    checkboxes.forEach(cb => {
+                        cb.checked = false;
+                        cb.disabled = true;
+                    });
                 } else {
                     subdivisionGrid.classList.remove('disabled');
-                }
-            });
-        });
-
-        // Make wrapper divs toggle checkboxes when clicked
-        selectorDiv.querySelectorAll('.subdivision-checkbox-wrapper').forEach(wrapper => {
-            wrapper.addEventListener('click', (e) => {
-                // If clicking the checkbox itself, let it handle naturally
-                if (e.target.tagName !== 'INPUT') {
-                    const checkbox = wrapper.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
-                    checkbox.dispatchEvent(new Event('change'));
+                    checkboxes.forEach(cb => cb.disabled = false);
                 }
             });
         });
