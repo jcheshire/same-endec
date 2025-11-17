@@ -283,8 +283,6 @@ python3 -m http.server 8080
 
 Frontend runs at: `http://localhost:8080`
 
-**Note:** On macOS, you won't be able to compile multimon-ng or decode messages. Deploy to Ubuntu for full functionality.
-
 ---
 
 ## Environment Variables
