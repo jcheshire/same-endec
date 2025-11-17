@@ -2,64 +2,6 @@
 
 Web application for encoding and decoding Emergency Alert System (EAS) messages using the SAME (Specific Area Message Encoding) protocol.
 
-## ⚠️ Development Status
-
-**Last Updated:** 2024-11-14
-
-### Current State
-The application is **functionally complete** with SAME encoding/decoding, county subdivision support, and automated deployment. However, there is an **active UI issue** being debugged:
-
-**Active Issue:** Subdivision selector checkbox clicks sometimes don't register reliably. The UI appears and functions partially but needs refinement.
-
-### Recent Changes (This Session)
-- ✅ Added support for SAME subdivision codes (PSSCCC format per 47 CFR § 11.31)
-- ✅ Implemented two-step county selection with subdivision picker
-- ✅ Fixed callsign field (was using originator code instead)
-- ✅ Changed default callsign to PHILLYWX
-- ✅ Added SAME protocol spec compliance (duration increments, UTC timestamps)
-- ⚠️ Subdivision selector UI partially working but needs debugging
-
-### To-Do List
-
-**High Priority:**
-1. **Fix subdivision selector checkbox click detection** - Checkboxes sometimes don't respond to clicks. Needs investigation of event handlers and propagation.
-2. **Update duration input to be less error prone** - Replace free text input with dropdowns or better validation to prevent invalid duration formats (currently requires +HHMM format with specific 15/30-minute increments)
-3. **Update subdivision selector UI styling** - Improve visual feedback, make click targets more obvious, better mobile responsiveness
-
-**Medium Priority:**
-4. Test subdivision encoding/decoding end-to-end with actual WAV files
-5. Add visual indicators for which subdivisions are selected
-6. Consider adding county subdivision map/diagram for reference
-7. Improve toast notification styling and positioning
-
-**Low Priority:**
-8. Add keyboard shortcuts for common operations
-9. Consider caching county search results
-10. Add export/import of message presets
-
-### How to Resume Development
-
-If picking this up in a new session:
-
-1. **The subdivision selector issue:** Located in `frontend/app.js` starting around line 534 (`showSubdivisionSelector` function). The click event handling needs debugging - events may be propagating incorrectly or handlers may be firing multiple times.
-
-2. **Key files modified recently:**
-   - `backend/api.py` - FIPS search with subdivision support
-   - `backend/encoder.py` - Duration validation and UTC timestamps
-   - `frontend/app.js` - Subdivision selector logic
-   - `frontend/style.css` - Subdivision selector styling
-   - `frontend/index.html` - Added subdivision-selector-container
-
-3. **Testing the subdivision feature:**
-   - Text search (e.g., "Montgomery") should show county results
-   - Clicking a county should show subdivision selector below search
-   - Toggle between "Whole County" and "Subdivisions" modes
-   - Select multiple subdivisions (S, SW, SE, E, etc.)
-   - Click "Add Selected" to add to counties list
-   - Numeric search (e.g., "124031") should bypass selector and add directly
-
----
-
 ## 🚀 Quick Start (TL;DR)
 
 Want to run this on your server? It's simple:
@@ -674,9 +616,68 @@ This is a personal project but suggestions welcome:
 
 ---
 
+## Development Status & Roadmap
+
+### Current Status
+
+**Last Updated:** 2024-11-17
+
+The application is **fully functional** with core SAME encoding/decoding capabilities. All basic features are working:
+
+✅ **Implemented:**
+- SAME message encoding and decoding
+- County subdivision support (PSSCCC format per 47 CFR § 11.31)
+- Two-step county selection with subdivision picker
+- Smart county search (3,143+ US counties)
+- Protocol-compliant duration validation and UTC timestamps
+- Automated deployment with systemd and nginx
+- Security hardening (XSS, SQL injection, rate limiting, etc.)
+- Subdivision selector checkbox interaction (fixed 2024-11-17)
+
+### Feature Requests & Future Enhancements
+
+These are planned improvements to enhance UX and add convenience features:
+
+**User Experience:**
+1. **Redesign subdivision selector UX** - Current implementation is functional but could be more intuitive and visually appealing
+2. **Improve duration input** - Replace free text input with dropdown/time picker to prevent format errors (currently requires +HHMM format with specific 15/30-minute increments per SAME spec)
+3. **Better visual indicators** - Show selected subdivisions more clearly, possibly with interactive county map
+4. **Enhanced toast notifications** - Improve styling, positioning, and animation
+
+**Quality of Life:**
+5. **Keyboard shortcuts** - Add hotkeys for common operations
+6. **Message presets** - Export/import frequently used message templates
+7. **County search optimization** - Cache search results for better performance
+8. **End-to-end testing** - Comprehensive test suite for subdivision encoding/decoding with actual WAV files
+
+### For Contributors/Future Sessions
+
+**Key Files:**
+- `backend/api.py` - FIPS search with subdivision support
+- `backend/encoder.py` - Duration validation and UTC timestamps
+- `frontend/app.js` - Subdivision selector logic (line ~538: `showSubdivisionSelector`)
+- `frontend/style.css` - Subdivision selector styling
+- `frontend/index.html` - Subdivision selector container
+
+**Testing Subdivision Feature:**
+1. Text search (e.g., "Montgomery") → county results displayed
+2. Click county → subdivision selector appears below search
+3. Toggle between "Whole County" and "Subdivisions" modes
+4. Select multiple subdivisions (NW, N, NE, W, Central, E, SW, S, SE)
+5. Click "Add Selected" → adds to counties list with subdivision codes
+6. Numeric search (e.g., "124031") → bypasses selector, adds directly
+
+**Subdivision Code Format:**
+- Leading digit 1-9 = subdivision (0 = whole county)
+- Format: `PSSCCC` where P=part, SS=state FIPS, CCC=county FIPS
+- Example: `124031` = Northwest (1) Montgomery County (24031), MD
+
+---
+
 ## References
 
 - [SAME Protocol Specification (NOAA)](http://www.nws.noaa.gov/nwr/nwrsame.htm)
+- [47 CFR § 11.31 - EAS Protocol](https://www.ecfr.gov/current/title-47/chapter-I/subchapter-A/part-11/subpart-B/section-11.31)
 - [multimon-ng GitHub](https://github.com/EliasOenal/multimon-ng)
 - [EAS Wikipedia](https://en.wikipedia.org/wiki/Emergency_Alert_System)
 - [FIPS County Codes](https://www.census.gov/library/reference/code-lists/ansi.html)
