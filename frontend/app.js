@@ -64,25 +64,27 @@ async function loadEventCodes() {
 
         eventCodes = await response.json();
 
-        // Populate event code dropdown
+        // Populate event code dropdown (only on index.html)
         const select = document.getElementById('event-code');
-        select.innerHTML = '<option value="">Select Event Code</option>';
+        if (select) {
+            select.innerHTML = '<option value="">Select Event Code</option>';
 
-        // Sort by code alphabetically
-        Object.entries(eventCodes)
-            .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-            .forEach(([code, description]) => {
-                const option = document.createElement('option');
-                option.value = code;
-                option.textContent = `${code} - ${description}`;
-                select.appendChild(option);
+            // Sort by code alphabetically
+            Object.entries(eventCodes)
+                .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
+                .forEach(([code, description]) => {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = `${code} - ${description}`;
+                    select.appendChild(option);
+                });
+
+            // Update description on change
+            select.addEventListener('change', (e) => {
+                const desc = document.getElementById('event-description');
+                desc.textContent = eventCodes[e.target.value] || '';
             });
-
-        // Update description on change
-        select.addEventListener('change', (e) => {
-            const desc = document.getElementById('event-description');
-            desc.textContent = eventCodes[e.target.value] || '';
-        });
+        }
 
         // Populate reference page (if element exists)
         const refContainer = document.getElementById('event-codes-list');
@@ -804,6 +806,8 @@ function showLoading(show) {
 // Error handling
 function setupErrorHandler() {
     const errorBox = document.getElementById('error-box');
+    if (!errorBox) return; // Element doesn't exist on this page
+
     const closeBtn = errorBox.querySelector('.error-close');
 
     closeBtn.addEventListener('click', () => {
@@ -814,6 +818,12 @@ function setupErrorHandler() {
 function showError(message) {
     const errorBox = document.getElementById('error-box');
     const errorMessage = document.getElementById('error-message');
+
+    // If error box doesn't exist on this page, log to console instead
+    if (!errorBox || !errorMessage) {
+        console.error(message);
+        return;
+    }
 
     errorMessage.textContent = message;
     errorBox.classList.remove('hidden');
