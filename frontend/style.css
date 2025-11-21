@@ -283,8 +283,8 @@ header p {
 .subdivision-selector {
     margin-top: 0.75rem;
     padding: 1rem;
-    background-color: #f0f4ff;
-    border: 2px solid var(--border-color);
+    background-color: #fffbf0;
+    border: 2px solid #f5e6c8;
     border-radius: 0.375rem;
     box-shadow: var(--shadow-md);
 }
