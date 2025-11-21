@@ -33,16 +33,20 @@ Access your application at `http://your-server-ip` (or `https://your-domain.com`
 ## Features
 
 ### Encoding
-- **Build SAME Messages** - User-friendly form with event codes, county search, and duration
+- **Build SAME Messages** - User-friendly form with event codes, county search, and duration dropdown
 - **County Subdivision Support** - Select specific portions of counties (NW, S, SE, etc.) per 47 CFR § 11.31
-  - Text search: Select county, then choose whole county or specific subdivisions
+  - Text search: Select county, then choose whole county or specific subdivisions via visual picker
   - Numeric search: Enter 6-digit FIPS codes directly (e.g., 124031 for Northwest Montgomery County)
   - Multi-select: Pick multiple subdivisions of the same county for targeted alerts
+  - Visual distinction: Blue tags for whole counties, amber tags for subdivisions
 - **Smart County Search** - Search 3,143+ US counties by name or FIPS code with autocomplete
-- **Raw Encoding** - Encode custom SAME strings directly
+- **Duration Dropdown** - Pre-populated time increments (15-min up to 1hr, 30-min beyond) prevent format errors
+- **Required Callsign** - Station identifier required per SAME spec (defaults to PHILLYWX if empty)
+- **Raw Encoding** - Encode custom SAME strings directly for advanced users
 - **Message Preview** - See the SAME message before encoding
+- **Unique Filenames** - Downloads timestamped WAV files (e.g., same_TOR_20241121_143022.wav)
 - **3-Step Output** - Header WAV + Your Audio + EOM WAV for complete broadcasts
-- **Protocol Compliance** - Validates duration increments (15-min up to 1hr, 30-min beyond) and uses UTC timestamps
+- **Protocol Compliance** - Validates duration increments and uses UTC timestamps per 47 CFR § 11.31
 
 ### Decoding
 - **Upload WAV Files** - Decode SAME messages from audio
@@ -73,9 +77,10 @@ same-endec/
 │   ├── requirements.txt    # Python dependencies
 │   └── fips_codes.db       # SQLite database (3,143 counties)
 ├── frontend/
-│   ├── index.html          # Web interface
+│   ├── index.html          # Main web interface (encode/decode)
+│   ├── reference.html      # SAME protocol reference documentation
 │   ├── app.js              # Frontend logic (vanilla JS)
-│   ├── style.css           # Styling (no external dependencies)
+│   ├── style.css           # Emergency alert themed styling
 │   └── eom.wav             # Static End of Message audio
 ├── multimon-ng/            # Decoder source code (C)
 │   └── (submodule)         # Git submodule
@@ -108,7 +113,9 @@ same-endec/
 - County autocomplete search using FIPS database API
 - Real-time validation and preview
 - Audio player with download functionality
-- Responsive design for mobile and desktop
+- Emergency alert theme with amber accents
+- Responsive design for mobile and desktop (narrower 800px container)
+- Separate reference documentation page
 
 ### API Endpoints
 
@@ -618,7 +625,7 @@ This is a personal project but suggestions welcome:
 
 ### Current Status
 
-**Last Updated:** 2024-11-17
+**Last Updated:** 2024-11-21
 
 The application is **fully functional** with core SAME encoding/decoding capabilities. All basic features are working:
 
@@ -631,22 +638,27 @@ The application is **fully functional** with core SAME encoding/decoding capabil
 - Automated deployment with systemd and nginx
 - Security hardening (XSS, SQL injection, rate limiting, etc.)
 - Subdivision selector checkbox interaction (fixed 2024-11-17)
+- Duration dropdown with time increments (2024-11-21)
+- Emergency alert theme with amber accents (2024-11-21)
+- Unique timestamped WAV filenames (2024-11-21)
+- Numeric FIPS search subdivision support (2024-11-21)
+- Separate reference documentation page (2024-11-21)
+- Required callsign field with PHILLYWX default (2024-11-21)
 
 ### Feature Requests & Future Enhancements
 
 These are planned improvements to enhance UX and add convenience features:
 
 **User Experience:**
-1. **Redesign subdivision selector UX** - Current implementation is functional but could be more intuitive and visually appealing
-2. **Improve duration input** - Replace free text input with dropdown/time picker to prevent format errors (currently requires +HHMM format with specific 15/30-minute increments per SAME spec)
-3. **Better visual indicators** - Show selected subdivisions more clearly, possibly with interactive county map
-4. **Enhanced toast notifications** - Improve styling, positioning, and animation
+1. **Update raw SAME encode placeholder** - Include PHILLYWX in the example string instead of SCIENCE
+2. **Better visual indicators** - Show selected subdivisions more clearly, possibly with interactive county map
+3. **Enhanced toast notifications** - Improve styling, positioning, and animation
 
 **Quality of Life:**
-5. **Keyboard shortcuts** - Add hotkeys for common operations
-6. **Message presets** - Export/import frequently used message templates
-7. **County search optimization** - Cache search results for better performance
-8. **End-to-end testing** - Comprehensive test suite for subdivision encoding/decoding with actual WAV files
+4. **Keyboard shortcuts** - Add hotkeys for common operations
+5. **Message presets** - Export/import frequently used message templates
+6. **County search optimization** - Cache search results for better performance
+7. **End-to-end testing** - Comprehensive test suite for subdivision encoding/decoding with actual WAV files
 
 ### For Contributors/Future Sessions
 
