@@ -163,7 +163,7 @@ async def encode_message(request: Request, encode_request: EncodeRequest):
             location_codes=encode_request.location_codes,
             duration=encode_request.duration,
             timestamp=encode_request.timestamp,
-            originator=encode_request.callsign or "SCIENCE"  # Use callsign field, default to SCIENCE
+            originator=encode_request.callsign or "PHILLYWX"  # Use callsign field, default to PHILLYWX
         )
 
         # Encode to WAV bytes (header only, no EOM)
@@ -240,7 +240,7 @@ async def encode_preview(request: Request, encode_request: EncodeRequest):
             location_codes=encode_request.location_codes,
             duration=encode_request.duration,
             timestamp=encode_request.timestamp,
-            originator=encode_request.callsign or "SCIENCE"  # Use callsign field, default to SCIENCE
+            originator=encode_request.callsign or "PHILLYWX"  # Use callsign field, default to PHILLYWX
         )
 
         return MessageResponse(
