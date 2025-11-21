@@ -11,12 +11,28 @@ let currentAudioBlob = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    initializeTabs();
+    // Initialize tabs only if they exist (index.html)
+    if (document.querySelector('.tab-button')) {
+        initializeTabs();
+    }
+
+    // Load event codes (needed on both index and reference pages)
     loadEventCodes();
-    initializeEncodingForm();
-    initializeRawEncodingForm();
-    initializeDecodingForm();
-    initializeLocationLookup();
+
+    // Initialize forms only if they exist (index.html)
+    if (document.getElementById('encode-form')) {
+        initializeEncodingForm();
+    }
+    if (document.getElementById('raw-encode-form')) {
+        initializeRawEncodingForm();
+    }
+    if (document.getElementById('decode-form')) {
+        initializeDecodingForm();
+    }
+    if (document.getElementById('county-search')) {
+        initializeLocationLookup();
+    }
+
     setupErrorHandler();
 });
 
