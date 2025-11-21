@@ -295,36 +295,14 @@ header p {
     color: var(--text-primary);
 }
 
-.coverage-toggle {
-    display: flex;
-    gap: 0.5rem;
+.whole-county-option {
     margin-bottom: 1rem;
-    background-color: var(--bg-color);
-    border-radius: 0.375rem;
-    padding: 0.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.toggle-btn {
-    flex: 1;
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
+.whole-county-option .subdivision-checkbox-wrapper {
     font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.toggle-btn:hover {
-    color: var(--text-primary);
-}
-
-.toggle-btn.active {
-    background-color: var(--surface-color);
-    color: var(--primary-color);
-    box-shadow: var(--shadow-sm);
 }
 
 .subdivision-grid {
@@ -338,11 +316,16 @@ header p {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 0.25rem;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.subdivision-grid .subdivision-checkbox-wrapper {
+    padding: 0.4rem 0.5rem;
+    justify-content: center;
 }
 
 .subdivision-checkbox-wrapper:hover {
@@ -367,6 +350,12 @@ header p {
     font-size: 0.875rem;
     user-select: none;
     flex: 1;
+}
+
+.subdivision-grid .subdivision-checkbox-wrapper .subdivision-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    flex: 0;
 }
 
 .subdivision-grid.disabled {
