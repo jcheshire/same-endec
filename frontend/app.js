@@ -81,7 +81,10 @@ function populateEventCodesReference() {
     const container = document.getElementById('event-codes-list');
     container.innerHTML = '';
 
-    Object.entries(eventCodes).forEach(([code, description]) => {
+    // Sort event codes alphabetically by code
+    const sortedEntries = Object.entries(eventCodes).sort((a, b) => a[0].localeCompare(b[0]));
+
+    sortedEntries.forEach(([code, description]) => {
         const item = document.createElement('div');
         item.className = 'event-code-item';
         item.innerHTML = `<strong>${code}</strong>: ${description}`;
