@@ -681,93 +681,70 @@ header p {
         max-width: none;
     }
 
-    .sequence-container {
-        flex-direction: column;
+    .audio-outputs {
+        grid-template-columns: 1fr;
     }
 }
 
-/* Sequence Container */
-.sequence-container {
-    display: flex;
-    flex-direction: row;
-    gap: 1.5rem;
-    margin: 1.5rem 0;
+/* Message Preview and Audio Outputs */
+.message-preview {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
 }
 
-.sequence-step {
+.message-preview strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.message-preview pre {
+    margin: 0;
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.audio-outputs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.audio-output-item {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    align-items: center;
+    gap: 0.75rem;
     padding: 1.5rem;
     background-color: var(--surface-color);
     border: 2px solid var(--border-color);
     border-radius: 0.5rem;
     transition: border-color 0.2s ease;
-    flex: 1;
 }
 
-.sequence-step:hover {
+.audio-output-item:hover {
     border-color: var(--primary-color);
 }
 
-.step-number {
-    flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--primary-color);
-    color: white;
-    font-size: 1.25rem;
-    font-weight: 700;
-    border-radius: 50%;
-}
-
-.step-content {
-    flex: 1;
-    width: 100%;
-    text-align: center;
-}
-
-.step-content h4 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.125rem;
+.audio-output-item h4 {
+    margin: 0;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
-.step-content audio {
+.audio-output-item audio {
     width: 100%;
-    margin: 0.75rem 0;
 }
 
-.step-content .btn {
-    margin-top: 0.5rem;
-}
-
-.step-description {
-    color: var(--text-secondary);
-    font-size: 0.9375rem;
-    line-height: 1.5;
-    margin: 0.5rem 0 0 0;
-    text-align: left;
-}
-
-.broadcast-note {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    background-color: #fff3cd;
-    border: 1px solid #ffc107;
-    border-radius: 0.5rem;
-    color: #856404;
-}
-
-.broadcast-note strong {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #856404;
+.audio-output-item .btn {
+    width: 100%;
 }
 
 /* Decoded Message Display */
