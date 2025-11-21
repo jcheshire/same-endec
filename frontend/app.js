@@ -581,29 +581,31 @@ function initializeLocationLookup() {
         // Build subdivision selector HTML
         const baseFips = county.fips.substring(1); // Remove leading 0 to get base 5-digit code
         const subdivisions = [
-            { code: '1', name: 'Northwest' },
-            { code: '2', name: 'North' },
-            { code: '3', name: 'Northeast' },
-            { code: '4', name: 'West' },
-            { code: '5', name: 'Central' },
-            { code: '6', name: 'East' },
-            { code: '7', name: 'Southwest' },
-            { code: '8', name: 'South' },
-            { code: '9', name: 'Southeast' }
+            { code: '1', name: 'NW', fullName: 'Northwest' },
+            { code: '2', name: 'N', fullName: 'North' },
+            { code: '3', name: 'NE', fullName: 'Northeast' },
+            { code: '4', name: 'W', fullName: 'West' },
+            { code: '5', name: 'C', fullName: 'Central' },
+            { code: '6', name: 'E', fullName: 'East' },
+            { code: '7', name: 'SW', fullName: 'Southwest' },
+            { code: '8', name: 'S', fullName: 'South' },
+            { code: '9', name: 'SE', fullName: 'Southeast' }
         ];
 
         selectorDiv.innerHTML = `
             <div class="subdivision-selector-header">${county.name}, ${county.state}</div>
 
-            <div class="coverage-toggle">
-                <button type="button" class="toggle-btn active" data-mode="whole">Whole County</button>
-                <button type="button" class="toggle-btn" data-mode="subdivisions">Subdivisions</button>
+            <div class="whole-county-option">
+                <label class="subdivision-checkbox-wrapper">
+                    <input type="checkbox" id="whole-county-checkbox">
+                    <span class="subdivision-label">Whole County</span>
+                </label>
             </div>
 
-            <div class="subdivision-grid disabled">
+            <div class="subdivision-grid">
                 ${subdivisions.map(sub => `
                     <label class="subdivision-checkbox-wrapper">
-                        <input type="checkbox" value="${sub.code}" data-name="${sub.name}">
+                        <input type="checkbox" value="${sub.code}" data-name="${sub.fullName}">
                         <span class="subdivision-label">${sub.name}</span>
                     </label>
                 `).join('')}
@@ -617,37 +619,40 @@ function initializeLocationLookup() {
 
         selectorDiv.classList.remove('hidden');
 
-        // Toggle between whole county and subdivisions
-        const toggleBtns = selectorDiv.querySelectorAll('.toggle-btn');
+        // Handle whole county checkbox interaction
+        const wholeCountyCheckbox = selectorDiv.querySelector('#whole-county-checkbox');
         const subdivisionGrid = selectorDiv.querySelector('.subdivision-grid');
-        const checkboxes = selectorDiv.querySelectorAll('input[type="checkbox"]');
+        const subdivisionCheckboxes = selectorDiv.querySelectorAll('.subdivision-grid input[type="checkbox"]');
 
-        toggleBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                toggleBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                if (btn.dataset.mode === 'whole') {
-                    subdivisionGrid.classList.add('disabled');
-                    checkboxes.forEach(cb => {
-                        cb.checked = false;
-                        cb.disabled = true;
-                    });
-                } else {
-                    subdivisionGrid.classList.remove('disabled');
-                    checkboxes.forEach(cb => cb.disabled = false);
-                }
-            });
+        wholeCountyCheckbox.addEventListener('change', () => {
+            if (wholeCountyCheckbox.checked) {
+                // Disable and uncheck all subdivisions
+                subdivisionGrid.classList.add('disabled');
+                subdivisionCheckboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.disabled = true;
+                });
+            } else {
+                // Enable subdivisions
+                subdivisionGrid.classList.remove('disabled');
+                subdivisionCheckboxes.forEach(cb => cb.disabled = false);
+            }
         });
 
-        // Check if all subdivisions are selected -> auto-switch to whole county
-        checkboxes.forEach(cb => {
+        // Check if all subdivisions are selected -> suggest whole county
+        subdivisionCheckboxes.forEach(cb => {
             cb.addEventListener('change', () => {
-                const checkedCount = Array.from(checkboxes).filter(c => c.checked).length;
+                const checkedCount = Array.from(subdivisionCheckboxes).filter(c => c.checked).length;
                 if (checkedCount === 9) {
-                    // All selected - switch to whole county
-                    toggleBtns[0].click(); // Click "Whole County" button
-                    showToast('All subdivisions selected, using whole county');
+                    // All selected - suggest whole county
+                    showToast('All subdivisions selected - consider using Whole County option');
+                }
+
+                // Uncheck whole county if any subdivision is selected
+                if (cb.checked && wholeCountyCheckbox.checked) {
+                    wholeCountyCheckbox.checked = false;
+                    subdivisionGrid.classList.remove('disabled');
+                    subdivisionCheckboxes.forEach(cb => cb.disabled = false);
                 }
             });
         });
@@ -659,9 +664,7 @@ function initializeLocationLookup() {
 
         // Add button
         selectorDiv.querySelector('.add-btn').addEventListener('click', () => {
-            const mode = selectorDiv.querySelector('.toggle-btn.active').dataset.mode;
-
-            if (mode === 'whole') {
+            if (wholeCountyCheckbox.checked) {
                 // Add whole county
                 addCounty({
                     fips: '0' + baseFips,
@@ -670,9 +673,9 @@ function initializeLocationLookup() {
                 });
             } else {
                 // Add selected subdivisions
-                const selected = Array.from(checkboxes).filter(cb => cb.checked);
+                const selected = Array.from(subdivisionCheckboxes).filter(cb => cb.checked);
                 if (selected.length === 0) {
-                    showToast('Please select at least one subdivision');
+                    showToast('Please select at least one option');
                     return;
                 }
 
