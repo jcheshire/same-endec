@@ -595,20 +595,22 @@ function initializeLocationLookup() {
         selectorDiv.innerHTML = `
             <div class="subdivision-selector-header">${county.name}, ${county.state}</div>
 
-            <div class="whole-county-option">
-                <label class="subdivision-checkbox-wrapper">
-                    <input type="checkbox" id="whole-county-checkbox">
-                    <span class="subdivision-label">Whole County</span>
-                </label>
-            </div>
-
-            <div class="subdivision-grid">
-                ${subdivisions.map(sub => `
+            <div class="subdivision-options-container">
+                <div class="whole-county-option">
                     <label class="subdivision-checkbox-wrapper">
-                        <input type="checkbox" value="${sub.code}" data-name="${sub.fullName}">
-                        <span class="subdivision-label">${sub.name}</span>
+                        <input type="checkbox" id="whole-county-checkbox">
+                        <span class="subdivision-label">Whole County</span>
                     </label>
-                `).join('')}
+                </div>
+
+                <div class="subdivision-grid">
+                    ${subdivisions.map(sub => `
+                        <label class="subdivision-checkbox-wrapper">
+                            <input type="checkbox" value="${sub.code}" data-name="${sub.fullName}">
+                            <span class="subdivision-label">${sub.name}</span>
+                        </label>
+                    `).join('')}
+                </div>
             </div>
 
             <div class="subdivision-actions">
