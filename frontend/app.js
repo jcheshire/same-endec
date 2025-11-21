@@ -489,7 +489,11 @@ function initializeLocationLookup() {
                 searchResults.innerHTML = data.results.map((county, index) => {
                     const alreadySelected = selectedCounties.some(c => c.fips === county.fips);
                     return `
-                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}" data-fips="${county.fips}" data-name="${county.name}" data-state="${county.state}">
+                        <div class="search-result-item ${alreadySelected ? 'disabled' : ''}"
+                             data-fips="${county.fips}"
+                             data-name="${county.name}"
+                             data-state="${county.state}"
+                             data-subdivision="${county.subdivision || ''}">
                             ${county.name}, ${county.state} <span class="fips-code">(${county.fips})</span>
                         </div>
                     `;
@@ -504,15 +508,21 @@ function initializeLocationLookup() {
 
                         if (isNumericSearch) {
                             // Numeric search - add directly without subdivision selector
-                            addCounty({
+                            const countyData = {
                                 fips: item.dataset.fips,
                                 name: item.dataset.name,
                                 state: item.dataset.state
-                            });
+                            };
+                            // Add subdivision if present
+                            if (item.dataset.subdivision && item.dataset.subdivision !== '') {
+                                countyData.subdivision = item.dataset.subdivision;
+                            }
+                            addCounty(countyData);
                             searchInput.value = '';
                             searchResults.classList.add('hidden');
                         } else {
                             // Text search - show subdivision selector
+                            searchResults.classList.add('hidden');
                             showSubdivisionSelector({
                                 fips: item.dataset.fips,
                                 name: item.dataset.name,
