@@ -79,9 +79,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="callsign">Callsign:</label>
-                        <input type="text" id="callsign" placeholder="PHILLYWX" maxlength="8" required>
-                        <span class="help-text">Up to 8 characters</span>
+                        <label for="callsign">Callsign (optional):</label>
+                        <input type="text" id="callsign" placeholder="PHILLYWX" maxlength="8" style="text-transform: uppercase;">
+                        <span class="help-text">Up to 8 characters (defaults to PHILLYWX if empty)</span>
                     </div>
 
                     <div class="button-group">
@@ -107,7 +107,7 @@
                         <div class="audio-output-item">
                             <h4>End of Message (EOM)</h4>
                             <audio id="eom-audio" controls src="eom.wav"></audio>
-                            <a href="eom.wav" download="same_eom.wav" class="btn btn-success">Download EOM</a>
+                            <button id="download-eom-btn" class="btn btn-success">Download EOM</button>
                         </div>
                     </div>
                 </div>
