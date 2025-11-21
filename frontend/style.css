@@ -10,6 +10,10 @@
     --success-hover: #059669;
     --error-color: #ef4444;
     --error-hover: #dc2626;
+    --alert-color: #f59e0b;
+    --alert-hover: #d97706;
+    --alert-light: #fef3c7;
+    --alert-border: #fbbf24;
     --bg-color: #f8fafc;
     --surface-color: #ffffff;
     --border-color: #e2e8f0;
@@ -35,7 +39,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 800px;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -51,7 +55,10 @@ header {
 header h1 {
     font-size: 2.5rem;
     font-weight: 700;
-    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--alert-color) 0%, var(--alert-hover) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: 0.5rem;
 }
 
@@ -86,8 +93,8 @@ header p {
 }
 
 .tab-button.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
+    color: var(--alert-hover);
+    border-bottom-color: var(--alert-color);
 }
 
 .tab-content {
@@ -102,6 +109,7 @@ header p {
 .section {
     background-color: var(--surface-color);
     border: 1px solid var(--border-color);
+    border-left: 4px solid var(--alert-color);
     border-radius: 0.5rem;
     padding: 2rem;
     margin-bottom: 2rem;
@@ -110,9 +118,20 @@ header p {
 
 .section h2 {
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 1.5rem;
-    color: var(--text-primary);
+    color: var(--alert-hover);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section h2::before {
+    content: '';
+    width: 4px;
+    height: 1.5rem;
+    background: linear-gradient(180deg, var(--alert-color) 0%, var(--alert-hover) 100%);
+    border-radius: 2px;
 }
 
 .section h3 {
@@ -130,9 +149,10 @@ header p {
 
 .form-group label {
     display: block;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
+    font-size: 0.9375rem;
 }
 
 .form-group input[type="text"],
@@ -140,17 +160,19 @@ header p {
 .form-group input[type="file"] {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--border-color);
     border-radius: 0.375rem;
     font-size: 1rem;
+    background-color: #fafbfc;
     transition: all 0.2s ease;
 }
 
 .form-group input[type="text"]:focus,
 .form-group select:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background-color: var(--surface-color);
+    border-color: var(--alert-color);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
 .form-group input[type="file"] {
@@ -233,6 +255,10 @@ header p {
     border-radius: 0.25rem;
     font-size: 0.875rem;
     white-space: nowrap;
+}
+
+.county-tag.subdivision-tag {
+    background: linear-gradient(135deg, var(--alert-color) 0%, var(--alert-hover) 100%);
 }
 
 .remove-county {
@@ -403,12 +429,13 @@ header p {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--alert-color) 0%, var(--alert-hover) 100%);
     color: white;
+    font-weight: 700;
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background: linear-gradient(135deg, var(--alert-hover) 0%, #b45309 100%);
 }
 
 .btn-secondary {

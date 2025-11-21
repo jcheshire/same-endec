@@ -693,8 +693,10 @@ function initializeLocationLookup() {
                 ? `${county.name}, ${county.state} - ${county.subdivision}`
                 : `${county.name}, ${county.state}`;
 
+            const tagClass = county.subdivision ? 'county-tag subdivision-tag' : 'county-tag';
+
             return `
-                <span class="county-tag">
+                <span class="${tagClass}">
                     ${displayName} (${county.fips})
                     <button type="button" class="remove-county" data-fips="${county.fips}">&times;</button>
                 </span>
