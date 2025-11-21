@@ -300,6 +300,7 @@ header p {
     gap: 1.5rem;
     margin-bottom: 1rem;
     align-items: start;
+    justify-content: center;
 }
 
 .whole-county-option {
