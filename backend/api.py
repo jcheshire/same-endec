@@ -169,12 +169,16 @@ async def encode_message(request: Request, encode_request: EncodeRequest):
         # Encode to WAV bytes (header only, no EOM)
         wav_data = encoder.encode(same_string, include_eom=False)
 
+        # Generate unique filename with timestamp
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"same_{encode_request.event_code}_{timestamp_str}.wav"
+
         # Return as downloadable WAV file
         return Response(
             content=wav_data,
             media_type="audio/wav",
             headers={
-                "Content-Disposition": f"attachment; filename=same_{encode_request.event_code}_header.wav"
+                "Content-Disposition": f"attachment; filename={filename}"
             }
         )
 
@@ -200,12 +204,16 @@ async def encode_raw_message(request: Request, encode_request: EncodeRawRequest)
         # Encode to WAV bytes (header only, no EOM)
         wav_data = encoder.encode(encode_request.same_string, include_eom=False)
 
+        # Generate unique filename with timestamp
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"same_custom_{timestamp_str}.wav"
+
         # Return as downloadable WAV file
         return Response(
             content=wav_data,
             media_type="audio/wav",
             headers={
-                "Content-Disposition": "attachment; filename=same_custom_header.wav"
+                "Content-Disposition": f"attachment; filename={filename}"
             }
         )
 

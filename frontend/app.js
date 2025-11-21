@@ -222,6 +222,9 @@ async function handleEncode(e) {
         const blob = await response.blob();
         currentAudioBlob = blob;
 
+        // Extract filename from response header
+        const filename = getFilenameFromResponse(response);
+
         // Display header audio player
         const headerAudio = document.getElementById('header-audio');
         const audioURL = URL.createObjectURL(blob);
@@ -232,7 +235,7 @@ async function handleEncode(e) {
 
         // Setup download button
         const downloadBtn = document.getElementById('download-header-btn');
-        downloadBtn.onclick = () => downloadWAV(blob, 'same_header.wav');
+        downloadBtn.onclick = () => downloadWAV(blob, filename);
 
         // Scroll to output
         encodeOutput.scrollIntoView({ behavior: 'smooth' });
@@ -283,6 +286,9 @@ async function handleRawEncode(e) {
         const blob = await response.blob();
         currentAudioBlob = blob;
 
+        // Extract filename from response header
+        const filename = getFilenameFromResponse(response);
+
         // Display header audio player
         const headerAudio = document.getElementById('header-audio');
         const audioURL = URL.createObjectURL(blob);
@@ -293,7 +299,7 @@ async function handleRawEncode(e) {
 
         // Setup download button
         const downloadBtn = document.getElementById('download-header-btn');
-        downloadBtn.onclick = () => downloadWAV(blob, 'same_header.wav');
+        downloadBtn.onclick = () => downloadWAV(blob, filename);
 
         // Scroll to output
         encodeOutput.scrollIntoView({ behavior: 'smooth' });
@@ -727,6 +733,18 @@ function escapeHtml(unsafe) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+// Extract filename from Content-Disposition header
+function getFilenameFromResponse(response) {
+    const disposition = response.headers.get('Content-Disposition');
+    if (disposition) {
+        const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+            return filenameMatch[1].replace(/['"]/g, '');
+        }
+    }
+    return 'same_header.wav'; // Fallback
 }
 
 // Download WAV file
