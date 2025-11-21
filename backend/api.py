@@ -178,7 +178,7 @@ async def encode_message(request: Request, encode_request: EncodeRequest):
             content=wav_data,
             media_type="audio/wav",
             headers={
-                "Content-Disposition": f"attachment; filename={filename}"
+                "Content-Disposition": f'attachment; filename="{filename}"'
             }
         )
 
@@ -213,7 +213,7 @@ async def encode_raw_message(request: Request, encode_request: EncodeRawRequest)
             content=wav_data,
             media_type="audio/wav",
             headers={
-                "Content-Disposition": f"attachment; filename={filename}"
+                "Content-Disposition": f'attachment; filename="{filename}"'
             }
         )
 

@@ -68,8 +68,11 @@ async function loadEventCodes() {
             desc.textContent = eventCodes[e.target.value] || '';
         });
 
-        // Populate reference tab
-        populateEventCodesReference();
+        // Populate reference page (if element exists)
+        const refContainer = document.getElementById('event-codes-list');
+        if (refContainer) {
+            populateEventCodesReference();
+        }
 
     } catch (error) {
         showError('Failed to load event codes: ' + error.message);
