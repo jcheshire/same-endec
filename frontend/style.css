@@ -122,16 +122,17 @@ header p {
     margin-bottom: 1.5rem;
     color: var(--alert-hover);
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 0.5rem;
 }
 
 .section h2::before {
     content: '';
     width: 4px;
-    height: 1.5rem;
+    min-height: 1.5rem;
     background: linear-gradient(180deg, var(--alert-color) 0%, var(--alert-hover) 100%);
     border-radius: 2px;
+    align-self: stretch;
 }
 
 .section h3 {
