@@ -137,12 +137,14 @@ async function handleEncode(e) {
         return;
     }
 
+    const callsignValue = document.getElementById('callsign').value.trim().toUpperCase();
+
     const data = {
         event_code: eventCode,
         originator: document.getElementById('originator').value,
         location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
         duration: document.getElementById('duration').value,
-        callsign: document.getElementById('callsign').value || undefined
+        callsign: callsignValue || 'PHILLYWX'
     };
 
     try {
@@ -203,9 +205,17 @@ async function handleEncode(e) {
         const encodeOutput = document.getElementById('encode-output');
         encodeOutput.classList.remove('hidden');
 
-        // Setup download button
-        const downloadBtn = document.getElementById('download-header-btn');
-        downloadBtn.onclick = () => downloadWAV(blob, filename);
+        // Setup download buttons
+        const downloadHeaderBtn = document.getElementById('download-header-btn');
+        downloadHeaderBtn.onclick = () => downloadWAV(blob, filename);
+
+        const downloadEomBtn = document.getElementById('download-eom-btn');
+        downloadEomBtn.onclick = () => {
+            const link = document.createElement('a');
+            link.href = 'eom.wav';
+            link.download = 'same_eom.wav';
+            link.click();
+        };
 
         // Scroll to output
         encodeOutput.scrollIntoView({ behavior: 'smooth' });

@@ -717,6 +717,12 @@ header p {
     margin-top: 1.5rem;
 }
 
+@media (max-width: 768px) {
+    .audio-outputs {
+        grid-template-columns: 1fr;
+    }
+}
+
 .audio-output-item {
     display: flex;
     flex-direction: column;
