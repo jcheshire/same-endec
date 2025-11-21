@@ -85,50 +85,30 @@
                     </div>
 
                     <div class="button-group">
-                        <button type="button" id="preview-btn" class="btn btn-secondary">Preview Message</button>
                         <button type="submit" class="btn btn-primary">Encode to WAV</button>
                     </div>
                 </form>
 
-                <div id="preview-output" class="output-box hidden">
-                    <h3>Message Preview</h3>
-                    <pre id="preview-text"></pre>
-                </div>
-
                 <div id="encode-output" class="output-box hidden">
-                    <h3>Your SAME Alert Sequence</h3>
-                    <p class="help-text">Complete EAS messages require these three parts in order:</p>
+                    <h3>Encoded SAME Message</h3>
 
-                    <div class="sequence-container">
-                        <div class="sequence-step">
-                            <div class="step-number">1</div>
-                            <div class="step-content">
-                                <h4>Header (SAME Alert)</h4>
-                                <audio id="header-audio" controls></audio>
-                                <button id="download-header-btn" class="btn btn-success">Download Header</button>
-                            </div>
-                        </div>
-
-                        <div class="sequence-step">
-                            <div class="step-number">2</div>
-                            <div class="step-content">
-                                <h4>Your Audio Message</h4>
-                                <p class="step-description">Record or upload your alert message audio separately. This is the content users will hear between the alert tones.</p>
-                            </div>
-                        </div>
-
-                        <div class="sequence-step">
-                            <div class="step-number">3</div>
-                            <div class="step-content">
-                                <h4>End of Message (EOM)</h4>
-                                <audio id="eom-audio" controls src="eom.wav"></audio>
-                                <a href="eom.wav" download="same_eom.wav" class="btn btn-success">Download EOM</a>
-                            </div>
-                        </div>
+                    <div class="message-preview">
+                        <strong>Message String:</strong>
+                        <pre id="preview-text"></pre>
                     </div>
 
-                    <div class="broadcast-note">
-                        <strong>Broadcasting Instructions:</strong> Concatenate these three files in order (Header → Your Message → EOM) before broadcasting. The header and EOM contain the SAME protocol tones required by EAS receivers.
+                    <div class="audio-outputs">
+                        <div class="audio-output-item">
+                            <h4>Header (SAME Alert Tones)</h4>
+                            <audio id="header-audio" controls></audio>
+                            <button id="download-header-btn" class="btn btn-success">Download Header</button>
+                        </div>
+
+                        <div class="audio-output-item">
+                            <h4>End of Message (EOM)</h4>
+                            <audio id="eom-audio" controls src="eom.wav"></audio>
+                            <a href="eom.wav" download="same_eom.wav" class="btn btn-success">Download EOM</a>
+                        </div>
                     </div>
                 </div>
             </div>

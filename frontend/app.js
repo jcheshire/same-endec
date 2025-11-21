@@ -116,81 +116,7 @@ function populateEventCodesReference() {
 // Initialize encoding form
 function initializeEncodingForm() {
     const form = document.getElementById('encode-form');
-    const previewBtn = document.getElementById('preview-btn');
-
-    previewBtn.addEventListener('click', handlePreview);
     form.addEventListener('submit', handleEncode);
-}
-
-// Handle preview
-async function handlePreview(e) {
-    e.preventDefault();
-
-    // Validate event code
-    const eventCode = document.getElementById('event-code').value;
-    if (!eventCode || eventCode.trim() === '') {
-        showError('Please select an event code from the dropdown');
-        return;
-    }
-
-    // Validate location codes
-    const locationCodesValue = document.getElementById('location-codes').value;
-    if (!locationCodesValue || locationCodesValue.trim() === '') {
-        showError('Please select at least one county');
-        return;
-    }
-
-    const data = {
-        event_code: eventCode,
-        originator: document.getElementById('originator').value,
-        location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
-        duration: document.getElementById('duration').value,
-        callsign: document.getElementById('callsign').value || undefined
-    };
-
-    try {
-        showLoading(true);
-        const response = await fetch(`${API_BASE}/encode/preview`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            // Handle Pydantic validation errors (422)
-            if (response.status === 422 && error.detail) {
-                if (Array.isArray(error.detail)) {
-                    // Format validation errors nicely
-                    const messages = error.detail.map(e => `${e.loc[e.loc.length - 1]}: ${e.msg}`).join(', ');
-                    throw new Error(messages);
-                } else if (typeof error.detail === 'string') {
-                    throw new Error(error.detail);
-                }
-            }
-            throw new Error(error.detail || 'Preview failed');
-        }
-
-        const result = await response.json();
-
-        const previewOutput = document.getElementById('preview-output');
-        const previewText = document.getElementById('preview-text');
-
-        previewText.textContent = result.message;
-        previewOutput.classList.remove('hidden');
-
-    } catch (error) {
-        // Handle different error types
-        let errorMsg = 'Preview failed';
-        if (error.message && typeof error.message === 'string') {
-            errorMsg += ': ' + error.message;
-        } else if (error.detail) {
-            errorMsg += ': ' + error.detail;
-        }
-        showError(errorMsg);
-    } finally {
-        showLoading(false);
-    }
 }
 
 // Handle encoding
@@ -221,6 +147,22 @@ async function handleEncode(e) {
 
     try {
         showLoading(true);
+
+        // First get the preview message string
+        const previewResponse = await fetch(`${API_BASE}/encode/preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!previewResponse.ok) {
+            const error = await previewResponse.json();
+            throw new Error(error.detail || 'Failed to generate message');
+        }
+
+        const previewResult = await previewResponse.json();
+
+        // Then encode the audio
         const response = await fetch(`${API_BASE}/encode`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -248,6 +190,10 @@ async function handleEncode(e) {
 
         // Extract filename from response header
         const filename = getFilenameFromResponse(response);
+
+        // Display message preview
+        const previewText = document.getElementById('preview-text');
+        previewText.textContent = previewResult.message;
 
         // Display header audio player
         const headerAudio = document.getElementById('header-audio');
