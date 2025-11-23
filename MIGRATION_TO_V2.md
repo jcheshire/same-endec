@@ -35,6 +35,10 @@ User wants to eliminate the multimon-ng dependency to:
 
 ## Migration Checklist
 
+### 0. Perform security audit of all code generated in the new decoder modules
+
+Perform a full security focused review of all code generated in our Python decoding module.
+
 ### 1. Add Compatibility Layer to `python_decoder.py`
 
 ```python
