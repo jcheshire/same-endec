@@ -65,24 +65,33 @@ class PythonSAMEDecoder:
     def reset_state(self) -> None:
         """Reset decoder state for new stream"""
         self.state = {
-            'sync_locked': False,
-            'bit_buffer': [],
-            'byte_buffer': [],
-            'current_byte': 0,
-            'bit_count': 0,
-            'messages': [],
+            # L1 (Physical layer) state
+            'phase': 0,
             'integrator': 0,
-            'in_message': False,
+            'dcd_shreg': 0,
+            'lasts': 0,
+            'sync_locked': False,
+            'byte_counter': 0,
+
+            # L2 (Message layer) state
+            'l2_state': 'IDLE',  # IDLE, HEADER_SEARCH, READING_MESSAGE
+            'header_buffer': '',
             'message_buffer': '',
+            'decoded_bytes': [],
+            'messages': [],
+
+            # Audio buffering for chunk boundaries
+            'audio_buffer': np.array([], dtype=np.float64),
         }
 
-    def demodulate_fsk_with_decode(self, audio_samples: np.ndarray) -> List[int]:
+    def demodulate_fsk_with_decode(self, audio_samples: np.ndarray, use_state: bool = False) -> List[int]:
         """
         Demodulate FSK audio and extract bytes directly.
         Closely follows multimon-ng's algorithm (demod_eas.c lines 278-401).
 
         Args:
             audio_samples: Float array of audio samples (-1.0 to 1.0)
+            use_state: If True, preserve state between calls for streaming
 
         Returns:
             List of decoded bytes (0-255)
@@ -92,7 +101,6 @@ class PythonSAMEDecoder:
             audio_samples = audio_samples.astype(np.float64)
 
         num_samples = len(audio_samples)
-        decoded_bytes = []
 
         # Constants (matching multimon-ng demod_eas.c)
         SUBSAMP = 2
@@ -101,22 +109,26 @@ class PythonSAMEDecoder:
         DLL_GAIN_SYNC = 0.5
         DLL_MAX_INC = 8192
 
-        # Phase accumulator and integrator (matching multimon-ng)
-        # SPHASEINC = 0x10000 * BAUD * SUBSAMP / FREQ_SAMP
+        # Phase accumulator increment
         phase_increment = int(0x10000 * self.BAUD_RATE * SUBSAMP / self.sample_rate)
-        phase = 0
-        integrator = 0
 
-        # DCD shift register for tracking recent correlation results
-        # Used to detect bit transitions for DLL
-        dcd_shreg = 0
-
-        # Shift register for assembled bits (LSB first)
-        lasts = 0
-
-        # State tracking
-        sync_locked = False
-        byte_counter = 0
+        # Load state or initialize fresh
+        if use_state:
+            phase = self.state['phase']
+            integrator = self.state['integrator']
+            dcd_shreg = self.state['dcd_shreg']
+            lasts = self.state['lasts']
+            sync_locked = self.state['sync_locked']
+            byte_counter = self.state['byte_counter']
+            decoded_bytes = self.state['decoded_bytes']
+        else:
+            phase = 0
+            integrator = 0
+            dcd_shreg = 0
+            lasts = 0
+            sync_locked = False
+            byte_counter = 0
+            decoded_bytes = []
 
         # Process with subsampling (every 2nd sample)
         i = 0
@@ -218,6 +230,16 @@ class PythonSAMEDecoder:
             # Advance by SUBSAMP samples
             i += SUBSAMP
 
+        # Save state if streaming
+        if use_state:
+            self.state['phase'] = phase
+            self.state['integrator'] = integrator
+            self.state['dcd_shreg'] = dcd_shreg
+            self.state['lasts'] = lasts
+            self.state['sync_locked'] = sync_locked
+            self.state['byte_counter'] = byte_counter
+            self.state['decoded_bytes'] = decoded_bytes
+
         logger.info(f"Decoded {len(decoded_bytes)} bytes")
         return decoded_bytes
 
@@ -250,6 +272,138 @@ class PythonSAMEDecoder:
             return True
 
         return False
+
+    def _process_decoded_byte(self, byte_val: int) -> Optional[Dict]:
+        """
+        Process a decoded byte through L2 state machine for continuous streaming.
+
+        This implements a state machine that continuously listens for SAME messages:
+        - Detects ZCZC (start of message)
+        - Accumulates message content (including all 3 repetitions)
+        - Detects NNNN (end of message) and emits complete message
+        - Returns to IDLE to listen for next message (never stops decoding)
+
+        Perfect for live radio streams, microphone input, etc.
+
+        Args:
+            byte_val: Decoded byte value (0-255)
+
+        Returns:
+            Message dict if NNNN detected, None otherwise
+        """
+        char = chr(byte_val)
+
+        # State: IDLE → waiting for first character
+        if self.state['l2_state'] == 'IDLE':
+            self.state['l2_state'] = 'HEADER_SEARCH'
+            self.state['header_buffer'] = char
+            logger.debug(f"L2: IDLE → HEADER_SEARCH, char='{char}'")
+            return None
+
+        # State: HEADER_SEARCH → collecting 4 bytes to identify ZCZC or NNNN
+        elif self.state['l2_state'] == 'HEADER_SEARCH':
+            self.state['header_buffer'] += char
+
+            # Check if we have 4 bytes for header
+            if len(self.state['header_buffer']) >= 4:
+                header = self.state['header_buffer'][:4]
+
+                if header == 'ZCZC':
+                    # Found message start!
+                    self.state['l2_state'] = 'READING_MESSAGE'
+                    self.state['message_buffer'] = ''
+                    logger.info(f"L2: Found ZCZC → READING_MESSAGE")
+
+                elif header == 'NNNN':
+                    # Found EOM - emit current message and reset
+                    if self.state['message_buffer']:
+                        message = {
+                            'demod_name': 'EAS',
+                            'header_begin': 'ZCZC',
+                            'last_message': self.state['message_buffer'],
+                            'end_of_message': True  # Mark that we saw NNNN
+                        }
+                        logger.info(f"L2: Found NNNN (EOM) - Message complete!")
+                        # Reset to IDLE to listen for next message
+                        self.state['l2_state'] = 'IDLE'
+                        self.state['header_buffer'] = ''
+                        self.state['message_buffer'] = ''
+                        return message
+                    else:
+                        # NNNN without message, just reset
+                        logger.debug(f"L2: Found NNNN but no message buffered")
+                        self.state['l2_state'] = 'IDLE'
+                        self.state['header_buffer'] = ''
+
+                else:
+                    # Invalid header, slide window forward by 1 char
+                    # Keep last 3 chars in case we're mid-pattern
+                    self.state['header_buffer'] = self.state['header_buffer'][1:]
+                    logger.debug(f"L2: Invalid header, sliding window")
+
+            return None
+
+        # State: READING_MESSAGE → accumulating header until complete
+        elif self.state['l2_state'] == 'READING_MESSAGE':
+            self.state['message_buffer'] += char
+
+            # SAME header format: -ORG-EEE-LLLLLL+TTTT-JJJHHMM-CALLSIGN-
+            # We know it's complete when we have a callsign (≤8 chars) followed by '-'
+
+            # Parse the structure by counting dashes
+            parts = self.state['message_buffer'].split('-')
+
+            # Valid SAME message minimum parts:
+            # parts[0] = '' (before first -)
+            # parts[1] = ORG (3 chars)
+            # parts[2] = EEE (3 chars)
+            # parts[3...n-2] = location codes (6 chars each, last one has +TTTT appended)
+            # parts[n-1] = JJJHHMM (7 chars)
+            # parts[n] = CALLSIGN (1-8 chars)
+            # parts[n+1] = '' (after final -)
+
+            if len(parts) >= 6:  # At minimum: ['', 'ORG', 'EEE', 'LOC+TIME', 'TIMESTAMP', 'CALL', '']
+                # Check if we have a trailing empty string (final dash)
+                if parts[-1] == '' and len(parts[-2]) <= 8:
+                    # Looks like a complete message!
+                    message = {
+                        'demod_name': 'EAS',
+                        'header_begin': 'ZCZC',
+                        'last_message': self.state['message_buffer'],
+                        'end_of_message': False  # Haven't seen NNNN yet
+                    }
+                    logger.info(f"L2: Complete SAME header parsed: {self.state['message_buffer']}")
+                    # Stay in READING_MESSAGE to catch repetitions
+                    # But clear buffer to catch next repetition or NNNN
+                    self.state['message_buffer'] = ''
+                    return message
+
+            # Check if we see NNNN embedded (EOM marker arriving)
+            if 'NNNN' in self.state['message_buffer']:
+                logger.info(f"L2: NNNN (End of Message) marker detected")
+                # Don't emit - NNNN is just a marker, not a message
+                # Reset to IDLE to listen for next message
+                self.state['l2_state'] = 'IDLE'
+                self.state['header_buffer'] = ''
+                self.state['message_buffer'] = ''
+                return None
+
+            # Safety: max message length
+            if len(self.state['message_buffer']) > 300:
+                message = {
+                    'demod_name': 'EAS',
+                    'header_begin': 'ZCZC',
+                    'last_message': self.state['message_buffer'],
+                    'end_of_message': False
+                }
+                logger.warning(f"L2: Message exceeded max length, forcing emit")
+                self.state['l2_state'] = 'IDLE'
+                self.state['message_buffer'] = ''
+                return message
+
+            return None
+
+        return None
 
     def synchronize_bits(self, raw_bits: np.ndarray) -> Tuple[int, bool]:
         """
@@ -394,9 +548,65 @@ class PythonSAMEDecoder:
 
         return messages
 
+    def process_audio_chunk(self, audio_chunk: np.ndarray) -> List[Dict]:
+        """
+        Process an audio chunk for streaming decoding.
+
+        This method is designed for real-time/streaming use cases:
+        - Microphone input
+        - Live internet radio streams
+        - Software audio loopback
+
+        State is preserved between calls, so you can feed in chunks of any size.
+        Call reset_state() to start decoding a new stream.
+
+        Args:
+            audio_chunk: Float array of audio samples (-1.0 to 1.0), any length
+
+        Returns:
+            List of completed messages (may be empty if no complete messages yet)
+        """
+        # Ensure audio is float
+        if audio_chunk.dtype != np.float32 and audio_chunk.dtype != np.float64:
+            audio_chunk = audio_chunk.astype(np.float64)
+
+        # Prepend buffered audio from previous chunk (for correlation window continuity)
+        if len(self.state['audio_buffer']) > 0:
+            audio_chunk = np.concatenate([self.state['audio_buffer'], audio_chunk])
+
+        # Process chunk with state preservation
+        _ = self.demodulate_fsk_with_decode(audio_chunk, use_state=True)
+
+        # Save last correlation_length samples for next chunk
+        if len(audio_chunk) >= self.correlation_length:
+            self.state['audio_buffer'] = audio_chunk[-self.correlation_length:]
+        else:
+            self.state['audio_buffer'] = audio_chunk
+
+        # Process any new decoded bytes through L2 state machine
+        completed_messages = []
+        new_bytes = self.state['decoded_bytes'][:]  # Copy current bytes
+        self.state['decoded_bytes'] = []  # Clear for next chunk
+
+        for byte_val in new_bytes:
+            # Skip preamble bytes
+            if byte_val == self.PREAMBLE_BYTE:
+                continue
+
+            # Process through L2 state machine
+            message = self._process_decoded_byte(byte_val)
+            if message:
+                completed_messages.append(message)
+                logger.info(f"Streaming decoder: message complete!")
+
+        return completed_messages
+
     def decode_stream(self, audio_samples: np.ndarray) -> List[Dict]:
         """
         Core streaming decoder - process audio chunk.
+
+        DEPRECATED: Use process_audio_chunk() for true streaming.
+        This method processes a complete audio buffer at once (for backwards compatibility).
 
         Args:
             audio_samples: Audio data as float array
