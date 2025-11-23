@@ -2,7 +2,7 @@
 
 ## ✅ IMPLEMENTATION COMPLETE
 
-The pure Python SAME decoder is now fully functional and passes all tests!
+The pure Python SAME decoder is now fully functional with streaming support!
 
 ### What's Working
 - ✅ Test suite created (17 tests, **ALL PASS**)
@@ -15,14 +15,28 @@ The pure Python SAME decoder is now fully functional and passes all tests!
 - ✅ Preamble detection (0xAB sync pattern)
 - ✅ Byte extraction directly during demodulation
 - ✅ Message parsing and validation
+- ✅ **Streaming support** - microphone, live radio, audio loopback
+- ✅ **L2 state machine** - protocol-aware message assembly
 
 ### Key Implementation Details
 
-The decoder now matches multimon-ng's architecture exactly:
-1. **DLL timing recovery** (lines 150-166 in python_decoder.py) - adjusts phase when bit transitions occur to keep sampling centered
+**Layer 1 (Physical - FSK Demodulation):**
+1. **DLL timing recovery** (lines 150-166) - adjusts phase when bit transitions occur to keep sampling centered
 2. **Direct byte extraction** during FSK demodulation - no separate synchronization step needed
 3. **Preamble skipping** - detects 0xAB for sync, then skips remaining preamble bytes
-4. **Valid character checking** using multimon-ng's eas_allowed() logic
+4. **State persistence** - all L1 state (phase, integrator, sync, etc.) preserved between chunks
+
+**Layer 2 (Message Assembly):**
+1. **SAME protocol parser** - understands message structure: `-ORG-EVT-LOC+DUR-TIME-CALL-`
+2. **Continuous listening** - emits messages as headers complete, keeps listening indefinitely
+3. **NNNN detection** - recognizes end-of-message marker without stopping decoder
+4. **Audio buffering** - maintains correlation window across chunk boundaries
+
+### Use Cases Supported
+- 📁 **WAV file decoding** - `decode_file()` for batch processing
+- 🎤 **Microphone input** - `process_audio_chunk()` for live monitoring
+- 📻 **Internet radio streams** - continuous real-time decoding
+- 🔊 **Software audio loopback** - monitor system audio
 
 ## The Problem
 
@@ -142,3 +156,84 @@ Looked at:
 ## Decision
 
 Best path forward: Implement the DLL (Delay-Locked Loop) timing recovery from multimon-ng lines 328-349. This adjusts the phase based on bit transitions to keep sampling aligned with bit centers.
+
+---
+
+## Future Enhancements
+
+### Multi-Protocol Support (Like multimon-ng)
+
+**Status:** Architecture is well-positioned for generalization
+
+The current decoder has excellent separation of concerns that would make multi-protocol support relatively straightforward:
+
+**Layer 1 (FSK Demodulation) - Already Generic:**
+- Correlation with I/Q templates
+- DLL timing recovery
+- Phase accumulator and integrator
+- Sync pattern detection
+- Byte assembly
+
+**What's needed:** Extract to `FSKDemodulator` class with parameterized:
+- Mark/space frequencies
+- Baud rate
+- Sync pattern
+- Bit order (LSB/MSB)
+
+**Layer 2 (Message Parsing) - Protocol-Specific:**
+- SAME: `_process_decoded_byte()` understands ZCZC/NNNN structure
+- Could be abstracted to `MessageParser` interface
+
+**Potential Architecture:**
+```python
+class DigitalModeDecoder:
+    def __init__(self, demodulator: FSKDemodulator,
+                 parser: MessageParser):
+        self.demod = demodulator
+        self.parser = parser
+
+    def process_audio_chunk(self, audio):
+        bytes = self.demod.demodulate_fsk(audio, use_state=True)
+        messages = []
+        for byte_val in bytes:
+            msg = self.parser.process_byte(byte_val)
+            if msg:
+                messages.append(msg)
+        return messages
+
+# Usage examples:
+same = DigitalModeDecoder(
+    FSKDemodulator(mark=2083.33, space=1562.5, baud=520.83),
+    SAMEParser()
+)
+
+pocsag = DigitalModeDecoder(
+    FSKDemodulator(mark=1200, space=1800, baud=512),
+    POCSAGParser()
+)
+
+aprs = DigitalModeDecoder(
+    FSKDemodulator(mark=1200, space=2200, baud=1200),
+    APRSParser()
+)
+```
+
+**Supported Protocols (with refactor):**
+- ✅ SAME/EAS (current)
+- 📟 POCSAG (pagers)
+- 📻 APRS (packet radio)
+- 📠 RTTY
+- 🔊 AFSK modes
+- Any FSK-based digital mode
+
+**Effort estimate:** 2-3 days
+- Extract FSK core → `FSKDemodulator` class
+- Create `MessageParser` ABC
+- Move SAME logic → `SAMEParser` implementation
+- Add protocol registration/discovery
+
+**Benefits:**
+- Single codebase for multiple protocols
+- Shared DLL/correlation optimizations
+- Streaming works for all protocols
+- Pure Python (no external dependencies)
