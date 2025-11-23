@@ -1,21 +1,28 @@
 # Python SAME Decoder - Debug Notes
 
-## Current Status
+## ✅ IMPLEMENTATION COMPLETE
 
-Implementing a pure Python SAME decoder to replace multimon-ng dependency and enable GPL-free licensing.
+The pure Python SAME decoder is now fully functional and passes all tests!
 
 ### What's Working
-- ✅ Test suite created (17 tests, all pass with multimon-ng baseline)
-- ✅ Encoder generates valid SAME WAV files (multimon-ng can decode them)
-- ✅ Basic decoder structure complete
-- ✅ FSK correlation templates correctly generated
-- ✅ Resampling from 43750 Hz → 22050 Hz working
-- ✅ Phase accumulator logic implemented (matches multimon-ng)
-- ✅ Integrator for bit decisions implemented
+- ✅ Test suite created (17 tests, **ALL PASS**)
+- ✅ Encoder generates valid SAME WAV files
+- ✅ FSK demodulation with I/Q correlation
+- ✅ Resampling from encoder's 43750 Hz → 22050 Hz
+- ✅ Phase accumulator for bit timing (matches multimon-ng)
+- ✅ Integrator for noise-robust bit decisions
+- ✅ **DLL (Delay-Locked Loop) timing recovery implemented**
+- ✅ Preamble detection (0xAB sync pattern)
+- ✅ Byte extraction directly during demodulation
+- ✅ Message parsing and validation
 
-### What's NOT Working
-- ❌ Demodulated bits don't contain 0xAB preamble pattern
-- ❌ Bit timing/synchronization not aligned correctly
+### Key Implementation Details
+
+The decoder now matches multimon-ng's architecture exactly:
+1. **DLL timing recovery** (lines 150-166 in python_decoder.py) - adjusts phase when bit transitions occur to keep sampling centered
+2. **Direct byte extraction** during FSK demodulation - no separate synchronization step needed
+3. **Preamble skipping** - detects 0xAB for sync, then skips remaining preamble bytes
+4. **Valid character checking** using multimon-ng's eas_allowed() logic
 
 ## The Problem
 

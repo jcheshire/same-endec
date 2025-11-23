@@ -76,31 +76,47 @@ class PythonSAMEDecoder:
             'message_buffer': '',
         }
 
-    def demodulate_fsk(self, audio_samples: np.ndarray) -> np.ndarray:
+    def demodulate_fsk_with_decode(self, audio_samples: np.ndarray) -> List[int]:
         """
-        Demodulate FSK audio to bits using correlation with phase accumulator and integrator.
-        Closely follows multimon-ng's algorithm.
+        Demodulate FSK audio and extract bytes directly.
+        Closely follows multimon-ng's algorithm (demod_eas.c lines 278-401).
 
         Args:
             audio_samples: Float array of audio samples (-1.0 to 1.0)
 
         Returns:
-            Integer array where 1=mark(binary 1), 0=space(binary 0)
+            List of decoded bytes (0-255)
         """
         # Ensure audio is float
         if audio_samples.dtype != np.float32 and audio_samples.dtype != np.float64:
             audio_samples = audio_samples.astype(np.float64)
 
         num_samples = len(audio_samples)
-        bits = []
+        decoded_bytes = []
+
+        # Constants (matching multimon-ng demod_eas.c)
+        SUBSAMP = 2
+        INTEGRATOR_MAX = 10
+        DLL_GAIN_UNSYNC = 0.5
+        DLL_GAIN_SYNC = 0.5
+        DLL_MAX_INC = 8192
 
         # Phase accumulator and integrator (matching multimon-ng)
         # SPHASEINC = 0x10000 * BAUD * SUBSAMP / FREQ_SAMP
-        SUBSAMP = 2
         phase_increment = int(0x10000 * self.BAUD_RATE * SUBSAMP / self.sample_rate)
         phase = 0
         integrator = 0
-        INTEGRATOR_MAX = 10
+
+        # DCD shift register for tracking recent correlation results
+        # Used to detect bit transitions for DLL
+        dcd_shreg = 0
+
+        # Shift register for assembled bits (LSB first)
+        lasts = 0
+
+        # State tracking
+        sync_locked = False
+        byte_counter = 0
 
         # Process with subsampling (every 2nd sample)
         i = 0
@@ -118,27 +134,122 @@ class PythonSAMEDecoder:
             # Decision metric: f > 0 if mark, f < 0 if space
             f = (mark_i_corr**2 + mark_q_corr**2) - (space_i_corr**2 + space_q_corr**2)
 
+            # Update DCD shift register
+            # Keep last few correlation samples - when synchronized,
+            # will have (nearly) single value per symbol
+            dcd_shreg = (dcd_shreg << 1) & 0xFFFFFFFF
+            if f > 0:
+                dcd_shreg |= 1
+
             # Update integrator (acts as low-pass filter on bit decisions)
             if f > 0 and integrator < INTEGRATOR_MAX:
                 integrator += 1
             elif f < 0 and integrator > -INTEGRATOR_MAX:
                 integrator -= 1
 
+            # DLL (Delay-Locked Loop) timing recovery
+            # Check if transition occurred - want transitions near phase 0
+            # XOR current bit with previous bit: if different, we have a transition
+            dll_gain = DLL_GAIN_SYNC if sync_locked else DLL_GAIN_UNSYNC
+
+            if (dcd_shreg ^ (dcd_shreg >> 1)) & 1:
+                # Transition detected
+                if phase < (0x8000 - (phase_increment // 8)):
+                    # Before center; check for decrement
+                    if phase > (phase_increment // 2):
+                        adjustment = min(int(phase * dll_gain), DLL_MAX_INC)
+                        phase -= adjustment
+                else:
+                    # After center; check for increment
+                    if phase < (0x10000 - phase_increment // 2):
+                        adjustment = min(int((0x10000 - phase) * dll_gain), DLL_MAX_INC)
+                        phase += adjustment
+
             # Advance phase
             phase += phase_increment
 
             # Check if we've completed a bit period
             if phase >= 0x10000:
-                phase = phase & 0xFFFF  # Keep remainder
+                phase = 1  # Reset to 1 (not 0) to match multimon-ng
+
+                # Shift the bit register
+                lasts >>= 1
 
                 # Make bit decision based on integrator
-                bit_value = 1 if integrator >= 0 else 0
-                bits.append(bit_value)
+                # If at least half of the values in integrator are 1, declare 1 received
+                if integrator >= 0:
+                    lasts |= 0x80
+
+                # Check for sync pattern (0xAB preamble)
+                # Do not resync when we're reading a message
+                if lasts == self.PREAMBLE_BYTE and not sync_locked:
+                    # Found sync - declare current offset as byte sync
+                    sync_locked = True
+                    byte_counter = 0
+                    logger.debug(f"Sync found")
+
+                # If synchronized, count bits and extract bytes
+                elif sync_locked:
+                    # Increment bit counter
+                    byte_counter += 1
+
+                    # Every 8 bits, we have a complete byte in lasts
+                    if byte_counter == 8:
+                        # Skip remaining preamble bytes (0xAB)
+                        if lasts == self.PREAMBLE_BYTE:
+                            byte_counter = 0
+                            continue
+
+                        # Check if character is valid SAME character
+                        if self._is_valid_same_char(lasts):
+                            decoded_bytes.append(lasts)
+                            logger.debug(f"Decoded byte: 0x{lasts:02X} '{chr(lasts) if 32 <= lasts <= 126 else '?'}'")
+                        else:
+                            # Character not valid, lost sync
+                            logger.debug(f"Invalid character 0x{lasts:02X}, lost sync")
+                            sync_locked = False
+
+                        byte_counter = 0
+
+                        # Stop if we've decoded enough bytes
+                        if len(decoded_bytes) > 300:
+                            break
 
             # Advance by SUBSAMP samples
             i += SUBSAMP
 
-        return np.array(bits, dtype=np.int8)
+        logger.info(f"Decoded {len(decoded_bytes)} bytes")
+        return decoded_bytes
+
+    def _is_valid_same_char(self, byte_val: int) -> bool:
+        """
+        Check if byte is a valid SAME protocol character.
+        Based on multimon-ng's eas_allowed() function.
+
+        Valid characters:
+        - ASCII 32-126 (printable characters)
+        - CR (13) and LF (10)
+        - Rejects high-byte ASCII (0x80 and above)
+
+        Args:
+            byte_val: Byte value (0-255)
+
+        Returns:
+            True if valid SAME character
+        """
+        # High-byte ASCII characters are forbidden
+        if byte_val & 0x80:
+            return False
+
+        # LF and CR are allowed
+        if byte_val == 13 or byte_val == 10:
+            return True
+
+        # Printable ASCII characters are allowed
+        if byte_val >= 32 and byte_val <= 126:
+            return True
+
+        return False
 
     def synchronize_bits(self, raw_bits: np.ndarray) -> Tuple[int, bool]:
         """
@@ -293,22 +404,10 @@ class PythonSAMEDecoder:
         Returns:
             List of message dictionaries
         """
-        # Demodulate FSK
-        bits = self.demodulate_fsk(audio_samples)
+        # Demodulate FSK and extract bytes directly
+        byte_stream = self.demodulate_fsk_with_decode(audio_samples)
 
-        # Find sync if not already locked
-        if not self.state['sync_locked']:
-            sync_offset, found = self.synchronize_bits(bits)
-            if not found:
-                return []
-            self.state['sync_locked'] = True
-        else:
-            sync_offset = 0
-
-        # Assemble bytes from bits
-        byte_stream = self.assemble_bytes(bits, sync_offset)
-
-        # Extract messages
+        # Extract messages from byte stream
         messages = self.extract_messages(byte_stream)
 
         return messages
