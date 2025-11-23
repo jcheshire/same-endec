@@ -1,5 +1,7 @@
 # SAME Encoder/Decoder Web Application
 
+**Version 1.0.0**
+
 Web application for encoding and decoding Emergency Alert System (EAS) messages using the SAME (Specific Area Message Encoding) protocol.
 
 ## 🚀 Quick Start (TL;DR)
@@ -610,9 +612,12 @@ This is a personal project but suggestions welcome:
 
 ## License
 
-**Backend Code:** Custom implementation
-**multimon-ng:** GPL v2.0 (from [EliasOenal/multimon-ng](https://github.com/EliasOenal/multimon-ng))
-**FIPS Data:** Public domain (US Census Bureau)
+This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](LICENSE) file for details.
+
+**Components:**
+- **SAME Encoder/Decoder Application:** GPL v2.0
+- **multimon-ng:** GPL v2.0 (from [EliasOenal/multimon-ng](https://github.com/EliasOenal/multimon-ng))
+- **FIPS Data:** Public domain (US Census Bureau)
 
 ---
 
