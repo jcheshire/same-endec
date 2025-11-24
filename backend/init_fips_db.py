@@ -2,6 +2,9 @@
 """
 Initialize FIPS code database for SAME encoder/decoder
 Downloads FIPS county codes and loads them into SQLite database
+
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Josh Cheshire
 """
 
 import sqlite3

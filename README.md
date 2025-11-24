@@ -685,3 +685,11 @@ These are planned improvements to enhance UX and add convenience features:
 - [EAS Wikipedia](https://en.wikipedia.org/wiki/Emergency_Alert_System)
 - [FIPS County Codes](https://www.census.gov/library/reference/code-lists/ansi.html)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Josh Cheshire

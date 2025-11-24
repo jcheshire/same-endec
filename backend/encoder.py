@@ -3,6 +3,9 @@ SAME (Specific Area Message Encoding) Protocol Encoder
 
 Generates EAS (Emergency Alert System) audio signals using FSK modulation.
 Based on the SAME protocol specification.
+
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Josh Cheshire
 """
 
 import numpy as np

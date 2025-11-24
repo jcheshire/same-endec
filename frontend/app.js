@@ -1,5 +1,10 @@
-// SAME Encoder/Decoder Frontend
-// Pure vanilla JavaScript - no external dependencies
+/**
+ * SAME Encoder/Decoder Frontend
+ * Pure vanilla JavaScript - no external dependencies
+ *
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2025 Josh Cheshire
+ */
 
 // Use relative URL for API calls - works with nginx reverse proxy
 // When nginx is configured, all requests to /api/* are proxied to backend
