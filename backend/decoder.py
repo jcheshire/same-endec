@@ -657,6 +657,10 @@ class SAMEDecoder:
         for i in range(message_start, len(text)):
             char = text[i]
 
+            # Stop if we hit another ZCZC (start of next repetition)
+            if i + 4 <= len(text) and text[i:i+4] == 'ZCZC':
+                break
+
             # Valid SAME characters: A-Z, 0-9, +, -
             if char == '-':
                 message_chars.append(char)
