@@ -3,6 +3,9 @@ Pure Python SAME (Specific Area Message Encoding) Decoder
 
 FSK demodulator for EAS messages with streaming support.
 No external dependencies beyond NumPy/SciPy.
+
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Josh Cheshire
 """
 
 import numpy as np
@@ -28,6 +31,122 @@ class PythonSAMEDecoder:
     MAX_SAMPLE_RATE = 48000      # Maximum acceptable sample rate (Hz)
     MIN_SAMPLE_RATE = 8000       # Minimum acceptable sample rate (Hz)
     MAX_DURATION_SECONDS = 300   # Maximum audio duration (5 minutes)
+
+    @staticmethod
+    def clean_same_message(message: str) -> str:
+        """
+        Clean a SAME message by removing noise and invalid characters
+        (Ported from old decoder.py for compatibility)
+
+        Args:
+            message: Raw SAME message string
+
+        Returns:
+            Cleaned message string with only valid SAME characters
+        """
+        import re
+        # SAME messages only contain: uppercase letters, numbers, +, and -
+        cleaned = re.sub(r'[^A-Z0-9+\-]', '', message.upper())
+
+        # Try to extract the core message pattern
+        match = re.search(r'([A-Z]{3}-[A-Z]{3}-[0-9+\-]+)', cleaned)
+        if match:
+            return match.group(1)
+
+        return cleaned
+
+    def parse_same_message(self, message_string: str) -> Dict:
+        """
+        Parse a SAME message string into components
+        (Ported from old decoder.py for compatibility)
+
+        Args:
+            message_string: SAME string (e.g., "WXR-TOR-024031+0030-3171500-SCIENCE-")
+
+        Returns:
+            Dictionary with parsed components:
+            {
+                "org": "WXR",
+                "event": "TOR",
+                "locations": ["024031"],
+                "duration": "+0030",
+                "timestamp": "3171500",
+                "originator": "SCIENCE"
+            }
+        """
+        parts = message_string.strip().strip('-').split('-')
+
+        result = {
+            "org": None,
+            "event": None,
+            "locations": [],
+            "duration": None,
+            "timestamp": None,
+            "originator": None,
+            "partial": False  # Flag to indicate if message is incomplete
+        }
+
+        # Handle partial messages gracefully
+        if len(parts) < 2:
+            logger.warning(f"Message too short to parse: {message_string}")
+            result["partial"] = True
+            return result
+
+        # Try to extract what we can even from partial messages
+        if len(parts) >= 1 and parts[0]:
+            result["org"] = parts[0] if len(parts[0]) == 3 else None
+
+        if len(parts) >= 2 and parts[1]:
+            result["event"] = parts[1] if len(parts[1]) == 3 else None
+
+        # Find duration (starts with + or contains +)
+        duration_idx = None
+        for i, part in enumerate(parts[2:], start=2):
+            if '+' in part:
+                duration_idx = i
+                break
+
+        if duration_idx:
+            # Check if location and duration are concatenated (e.g., "039039+0030")
+            location_duration_part = parts[duration_idx]
+            if '+' in location_duration_part and not location_duration_part.startswith('+'):
+                # Split on the + to separate location from duration
+                loc, dur = location_duration_part.split('+', 1)
+                # Add all previous parts as locations, plus the location from this part
+                locations = parts[2:duration_idx] + ([loc] if loc else [])
+                # Filter locations: should be 6 digits (or close to it)
+                result["locations"] = [l for l in locations if l and l.isdigit() and 4 <= len(l) <= 6]
+                result["duration"] = '+' + dur if dur else None
+            else:
+                # Everything between event and duration is location codes
+                locations = parts[2:duration_idx]
+                # Filter locations: should be 6 digits (or close to it)
+                result["locations"] = [l for l in locations if l and l.isdigit() and 4 <= len(l) <= 6]
+                result["duration"] = parts[duration_idx]
+
+            # Remaining parts are timestamp and originator
+            if duration_idx + 1 < len(parts):
+                timestamp = parts[duration_idx + 1]
+                # Validate timestamp: should be 7 digits (JJJHHMM)
+                if timestamp and timestamp.isdigit() and len(timestamp) == 7:
+                    result["timestamp"] = timestamp
+                else:
+                    logger.warning(f"Invalid timestamp: {timestamp}")
+                    result["partial"] = True
+
+            if duration_idx + 2 < len(parts):
+                originator = parts[duration_idx + 2]
+                # Originator should be alphanumeric, max 8 chars
+                if originator and len(originator) <= 8:
+                    result["originator"] = originator
+        else:
+            # No duration found - message is partial
+            result["partial"] = True
+            # Try to get locations anyway
+            locations = parts[2:]
+            result["locations"] = [l for l in locations if l and l.isdigit() and 4 <= len(l) <= 6]
+
+        return result
 
     def __init__(self, sample_rate: int = 22050):
         """
@@ -640,6 +759,19 @@ class PythonSAMEDecoder:
 
         return messages
 
+    def decode(self, wav_file_path: str, use_json: bool = True) -> Dict:
+        """
+        Backward compatibility alias for decode_file()
+
+        Args:
+            wav_file_path: Path to WAV file
+            use_json: Ignored (kept for compatibility)
+
+        Returns:
+            Dictionary matching current decoder.py format
+        """
+        return self.decode_file(wav_file_path)
+
     def decode_file(self, wav_path: str) -> Dict:
         """
         Decode SAME message from WAV file.
@@ -674,84 +806,93 @@ class PythonSAMEDecoder:
         if not os.path.isfile(wav_path):
             raise ValueError("Path must be a regular file")
 
+        # Validate WAV header magic bytes (for backward compatibility with old decoder)
+        with open(wav_path, 'rb') as f:
+            header = f.read(12)
+            if len(header) < 12 or header[0:4] != b'RIFF' or header[8:12] != b'WAVE':
+                raise ValueError("File is not a valid WAV file")
+
         # Reset state for new file
         self.reset_state()
 
-        try:
-            # Read WAV file
-            sample_rate, audio_data = wavfile.read(wav_path)
+        # Read WAV file
+        sample_rate, audio_data = wavfile.read(wav_path)
 
-            # Validate sample rate
-            if sample_rate > self.MAX_SAMPLE_RATE:
-                raise ValueError(
-                    f"Sample rate {sample_rate} Hz exceeds maximum {self.MAX_SAMPLE_RATE} Hz"
-                )
-            if sample_rate < self.MIN_SAMPLE_RATE:
-                raise ValueError(
-                    f"Sample rate {sample_rate} Hz below minimum {self.MIN_SAMPLE_RATE} Hz"
-                )
+        # Validate sample rate
+        if sample_rate > self.MAX_SAMPLE_RATE:
+            raise ValueError(
+                f"Sample rate {sample_rate} Hz exceeds maximum {self.MAX_SAMPLE_RATE} Hz"
+            )
+        if sample_rate < self.MIN_SAMPLE_RATE:
+            raise ValueError(
+                f"Sample rate {sample_rate} Hz below minimum {self.MIN_SAMPLE_RATE} Hz"
+            )
 
-            # Validate duration
-            duration_seconds = len(audio_data) / sample_rate
-            if duration_seconds > self.MAX_DURATION_SECONDS:
-                raise ValueError(
-                    f"Audio duration {duration_seconds:.1f}s exceeds maximum "
-                    f"{self.MAX_DURATION_SECONDS}s"
-                )
+        # Validate duration
+        duration_seconds = len(audio_data) / sample_rate
+        if duration_seconds > self.MAX_DURATION_SECONDS:
+            raise ValueError(
+                f"Audio duration {duration_seconds:.1f}s exceeds maximum "
+                f"{self.MAX_DURATION_SECONDS}s"
+            )
 
-            # Convert to mono if stereo
-            if len(audio_data.shape) > 1:
-                audio_data = audio_data[:, 0]
+        # Convert to mono if stereo
+        if len(audio_data.shape) > 1:
+            audio_data = audio_data[:, 0]
 
-            # Normalize to float -1.0 to 1.0
-            if audio_data.dtype == np.int16:
-                audio_data = audio_data.astype(np.float64) / 32768.0
-            elif audio_data.dtype == np.int32:
-                audio_data = audio_data.astype(np.float64) / 2147483648.0
-            elif audio_data.dtype == np.uint8:
-                audio_data = (audio_data.astype(np.float64) - 128) / 128.0
+        # Normalize to float -1.0 to 1.0
+        if audio_data.dtype == np.int16:
+            audio_data = audio_data.astype(np.float64) / 32768.0
+        elif audio_data.dtype == np.int32:
+            audio_data = audio_data.astype(np.float64) / 2147483648.0
+        elif audio_data.dtype == np.uint8:
+            audio_data = (audio_data.astype(np.float64) - 128) / 128.0
 
-            # Resample if needed
-            if sample_rate != self.sample_rate:
-                logger.info(f"Resampling from {sample_rate} Hz to {self.sample_rate} Hz")
-                # Use scipy's high-quality resampling
-                num_samples = int(len(audio_data) * self.sample_rate / sample_rate)
-                audio_data = scipy_signal.resample(audio_data, num_samples)
+        # Resample if needed
+        if sample_rate != self.sample_rate:
+            logger.info(f"Resampling from {sample_rate} Hz to {self.sample_rate} Hz")
+            # Use scipy's high-quality resampling
+            num_samples = int(len(audio_data) * self.sample_rate / sample_rate)
+            audio_data = scipy_signal.resample(audio_data, num_samples)
 
-            # Decode
-            messages = self.decode_stream(audio_data)
+        # Decode
+        messages = self.decode_stream(audio_data)
 
-            # Format output to match decoder.py
-            result = {
-                'success': len(messages) > 0,
-                'messages': messages,
-                'end_of_message': False,  # Could detect NNNN if needed
-                'raw_output': str(messages)
-            }
+        # Format output to match decoder.py
+        result = {
+            'success': len(messages) > 0,
+            'messages': messages,
+            'end_of_message': False,  # Could detect NNNN if needed
+            'raw_output': str(messages)
+        }
 
-            return result
+        return result
 
-        except Exception as e:
-            logger.error(f"Decode failed: {e}", exc_info=True)
-            return {
-                'success': False,
-                'messages': [],
-                'end_of_message': False,
-                'raw_output': f"Error: {str(e)}"
-            }
-
-    def decode_bytes(self, wav_data: bytes) -> Dict:
+    def decode_bytes(self, wav_data: bytes, use_json: bool = True) -> Dict:
         """
         Decode WAV data from bytes.
 
         Args:
             wav_data: WAV file content as bytes
+            use_json: Ignored (kept for compatibility)
 
         Returns:
             Dictionary matching current decoder.py format
+
+        Raises:
+            ValueError: If data is too large or invalid
         """
         import tempfile
         import os
+
+        # Security: Limit upload size to prevent DoS (10MB max)
+        MAX_FILE_SIZE = 10 * 1024 * 1024
+        if len(wav_data) > MAX_FILE_SIZE:
+            raise ValueError(f"File too large: {len(wav_data)} bytes (max {MAX_FILE_SIZE})")
+
+        # Security: Validate WAV header before writing to disk
+        if len(wav_data) < 12 or wav_data[0:4] != b'RIFF' or wav_data[8:12] != b'WAVE':
+            raise ValueError("Data is not a valid WAV file")
 
         # Create temp file with secure permissions from the start
         old_umask = os.umask(0o077)  # Ensures 0o600 (owner-only read/write)

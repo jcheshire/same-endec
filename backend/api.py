@@ -1,5 +1,8 @@
 """
 FastAPI Backend for SAME Encoder/Decoder Web Application
+
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Josh Cheshire
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
@@ -19,7 +22,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from encoder import SAMEEncoder, build_same_message
-from decoder import SAMEDecoder
+from python_decoder import PythonSAMEDecoder as SAMEDecoder
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
