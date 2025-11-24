@@ -21,9 +21,8 @@ sudo certbot --nginx -d your-domain.com
 ```
 
 That's it! The deployment script will:
-- Install all dependencies (Python, build tools, nginx, sox)
-- Compile multimon-ng decoder
-- Set up Python virtual environment
+- Install all dependencies (Python, nginx)
+- Set up Python virtual environment with NumPy/SciPy
 - Initialize FIPS county database
 - Create systemd services that start on boot
 - Configure nginx as a reverse proxy
@@ -72,7 +71,7 @@ Access your application at `http://your-server-ip` (or `https://your-domain.com`
 same-endec/
 ├── backend/
 │   ├── encoder.py          # SAME protocol encoder
-│   ├── decoder.py          # multimon-ng wrapper
+│   ├── decoder.py          # SAME decoder (FSK demodulation)
 │   ├── api.py              # FastAPI web server
 │   ├── init_fips_db.py     # FIPS database initialization
 │   ├── generate_eom.py     # Static EOM WAV generator
@@ -84,9 +83,6 @@ same-endec/
 │   ├── app.js              # Frontend logic (vanilla JS)
 │   ├── style.css           # Emergency alert themed styling
 │   └── eom.wav             # Static End of Message audio
-├── multimon-ng/            # Decoder source (from https://github.com/EliasOenal/multimon-ng)
-├── bin/                    # Compiled binaries (created by deploy.sh)
-│   └── multimon-ng         # Decoder binary
 ├── deploy.sh               # Automated deployment script
 └── README.md
 ```
@@ -102,12 +98,14 @@ same-endec/
 - Transmits header 3 times with preamble per SAME protocol spec
 - Outputs separate header and EOM files for flexible audio production
 
-### SAME Decoder (multimon-ng wrapper)
-- Calls compiled multimon-ng binary via subprocess
-- Parses JSON output with robust error handling
-- Validates WAV files before processing (magic bytes)
+### SAME Decoder
+- FSK demodulation using NumPy/SciPy (no external binaries)
+- Implements complete SAME protocol stack (preamble detection, byte framing, message extraction)
+- DLL-based timing recovery for accurate bit synchronization
+- Validates WAV files before processing (magic bytes, sample rate, duration limits)
+- Supports streaming decoding for real-time applications
 - Cleans noisy messages and handles partial data
-- Enriches output with human-readable information
+- Memory-safe with no subprocess execution
 
 ### Web Frontend (Vanilla JS)
 - Zero external dependencies (no React, Vue, jQuery, etc.)
@@ -146,9 +144,7 @@ same-endec/
 
 **System Packages:**
 - Python 3.8+
-- build-essential, cmake (for compiling multimon-ng)
-- libpulse-dev, sox (for audio processing)
-- nginx (optional, for production)
+- nginx (optional, for production deployment)
 
 ### Automated Deployment (Recommended)
 
@@ -164,15 +160,14 @@ sudo ./deploy.sh
 ```
 
 The script will:
-1. ✅ Install system dependencies (Python, build tools, sox, nginx)
+1. ✅ Install system dependencies (Python, nginx)
 2. ✅ Create Python virtual environment
-3. ✅ Install Python packages (FastAPI, numpy, scipy, etc.)
+3. ✅ Install Python packages (FastAPI, NumPy, SciPy, etc.)
 4. ✅ Download and initialize FIPS database (3,143 counties)
 5. ✅ Generate static EOM WAV file
-6. ✅ Compile multimon-ng decoder binary
-7. ✅ Create systemd services for auto-start
-8. ✅ Configure nginx reverse proxy
-9. ✅ Start all services
+6. ✅ Create systemd services for auto-start
+7. ✅ Configure nginx reverse proxy
+8. ✅ Start all services
 
 **Configuration:**
 
@@ -468,17 +463,6 @@ Full list of 50+ codes available via `/api/event-codes` endpoint or the Referenc
 
 ### Deployment Issues
 
-**"multimon-ng binary not found"**
-- Binary hasn't been compiled yet
-- Must be compiled on Ubuntu/Debian (not macOS)
-- Run `deploy.sh` to compile automatically
-- Check that `bin/multimon-ng` exists and is executable
-
-**"execlp: No such file or directory" when decoding**
-- Sox is not installed or not in PATH
-- Install: `sudo apt-get install sox`
-- If using systemd, ensure PATH includes `/usr/bin` (deploy.sh handles this)
-
 **Nginx 403 Forbidden**
 - Frontend files not readable by nginx
 - Check file permissions: `ls -la frontend/`
@@ -539,7 +523,7 @@ Full list of 50+ codes available via `/api/event-codes` endpoint or the Referenc
 
 ### Audio Format Details
 - **Encoder Output:** 44,100 Hz, 16-bit PCM WAV, mono
-- **Decoder Input:** 22,050 Hz or higher (multimon-ng requirement)
+- **Decoder Input:** 8-48 kHz supported (22,050 Hz default, automatically resampled if needed)
 - **FSK Modulation:** Mark 2083.33 Hz (binary 0), Space 1562.5 Hz (binary 1)
 - **Baud Rate:** 520.83 baud (per SAME spec)
 
@@ -579,9 +563,9 @@ No critical or high-severity vulnerabilities found.
 ### Backend (Python/FastAPI)
 - **FastAPI Framework:** Modern async web framework
 - **Pydantic Validation:** Type-safe request/response models
-- **NumPy/SciPy:** Signal processing for FSK encoding
+- **NumPy/SciPy:** Signal processing for FSK encoding/decoding
 - **SQLite:** FIPS code database (3,143+ counties)
-- **multimon-ng:** External C binary for decoding
+- **SAME Decoder:** No external binaries, memory-safe FSK demodulation
 - **slowapi:** Rate limiting middleware
 
 ### Frontend (Vanilla JavaScript)
@@ -607,17 +591,6 @@ This is a personal project but suggestions welcome:
 3. Create a feature branch
 4. Make your changes with tests
 5. Submit a pull request
-
----
-
-## License
-
-This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](LICENSE) file for details.
-
-**Components:**
-- **SAME Encoder/Decoder Application:** GPL v2.0
-- **multimon-ng:** GPL v2.0 (from [EliasOenal/multimon-ng](https://github.com/EliasOenal/multimon-ng))
-- **FIPS Data:** Public domain (US Census Bureau)
 
 ---
 
@@ -681,7 +654,14 @@ These are planned improvements to enhance UX and add convenience features:
 
 - [SAME Protocol Specification (NOAA)](http://www.nws.noaa.gov/nwr/nwrsame.htm)
 - [47 CFR § 11.31 - EAS Protocol](https://www.ecfr.gov/current/title-47/chapter-I/subchapter-A/part-11/subpart-B/section-11.31)
-- [multimon-ng GitHub](https://github.com/EliasOenal/multimon-ng)
 - [EAS Wikipedia](https://en.wikipedia.org/wiki/Emergency_Alert_System)
 - [FIPS County Codes](https://www.census.gov/library/reference/code-lists/ansi.html)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Josh Cheshire

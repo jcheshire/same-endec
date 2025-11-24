@@ -2,6 +2,9 @@
 """
 Generate static End-Of-Message (EOM) WAV file
 This only needs to be run once - EOM is always "NNNN"
+
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Josh Cheshire
 """
 
 from encoder import SAMEEncoder

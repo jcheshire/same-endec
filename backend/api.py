@@ -1,5 +1,8 @@
 """
 FastAPI Backend for SAME Encoder/Decoder Web Application
+
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Josh Cheshire
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
@@ -12,6 +15,7 @@ import uvicorn
 import logging
 import sqlite3
 import os
+import asyncio
 from datetime import datetime, timezone, timedelta
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -91,7 +95,7 @@ app.add_middleware(
 
 # Initialize encoder and decoder
 encoder = SAMEEncoder()
-decoder = SAMEDecoder()
+decoder = SAMEDecoder()  # Used for legacy compatibility; decode endpoint creates per-request instances
 
 
 # Pydantic models for request validation
@@ -467,8 +471,18 @@ async def decode_message(request: Request, file: UploadFile = File(...)):
         if len(wav_data) > MAX_SIZE:
             raise HTTPException(status_code=413, detail=f"File too large (max {MAX_SIZE // 1024 // 1024}MB)")
 
-        # Decode using multimon-ng
-        result = decoder.decode_bytes(wav_data, use_json=True)
+        # Decode with timeout protection (60 seconds max)
+        # Create new decoder instance per request (state isolation)
+        request_decoder = SAMEDecoder()
+
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(request_decoder.decode_bytes, wav_data),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"Decode timeout for file: {file.filename}")
+            raise HTTPException(status_code=408, detail="Decoding timed out after 60 seconds")
 
         if not result["success"]:
             return JSONResponse(
@@ -484,7 +498,7 @@ async def decode_message(request: Request, file: UploadFile = File(...)):
         parsed_messages = []
         for msg in result["messages"]:
             if "last_message" in msg:
-                parsed = decoder.parse_same_message(msg["last_message"])
+                parsed = request_decoder.parse_same_message(msg["last_message"])
                 enriched = enrich_parsed_message(parsed)
                 parsed_messages.append({
                     "raw": msg["last_message"],

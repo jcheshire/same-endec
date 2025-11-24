@@ -1,5 +1,10 @@
-// SAME Encoder/Decoder Frontend
-// Pure vanilla JavaScript - no external dependencies
+/**
+ * SAME Encoder/Decoder Frontend
+ * Pure vanilla JavaScript - no external dependencies
+ *
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2025 Josh Cheshire
+ */
 
 // Use relative URL for API calls - works with nginx reverse proxy
 // When nginx is configured, all requests to /api/* are proxied to backend
@@ -108,7 +113,13 @@ function populateEventCodesReference() {
     sortedEntries.forEach(([code, description]) => {
         const item = document.createElement('div');
         item.className = 'event-code-item';
-        item.innerHTML = `<strong>${code}</strong>: ${description}`;
+
+        // Use textContent instead of innerHTML to prevent XSS
+        const strong = document.createElement('strong');
+        strong.textContent = code;
+
+        item.appendChild(strong);
+        item.appendChild(document.createTextNode(': ' + description));
         container.appendChild(item);
     });
 }
