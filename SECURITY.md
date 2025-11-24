@@ -4,14 +4,15 @@ This document outlines the security measures implemented in the SAME Encoder/Dec
 
 ---
 
-## Security Improvements in v2.0.0
+## Security Improvements in v2.0.0 (Released)
 
-The migration to pure Python decoder significantly improved security posture:
+The replacement of multimon-ng C binary with Python decoder implementation improved security posture:
 
-### Major Attack Surface Reduction
+### Attack Surface Reduction
 - ✅ **Eliminated subprocess execution** - Removed multimon-ng C binary dependency
-- ✅ **Memory safety** - Python/NumPy managed memory vs. manual C memory management
-- ✅ **Code auditability** - Python decoder is easier to audit than C code
+- ✅ **Memory safety** - Managed memory (Python/NumPy) vs. manual C memory management
+- ✅ **Code auditability** - Single-language codebase easier to audit
+- ✅ **Dependency simplification** - No compilation toolchain required (cmake, build-essential)
 
 ### Security Fixes Applied
 - ✅ **Secure temporary files** - Created with 0o600 permissions (owner-only access)
@@ -20,6 +21,7 @@ The migration to pure Python decoder significantly improved security posture:
 - ✅ **State isolation** - Per-request decoder instances prevent cross-user data leakage
 - ✅ **Path validation** - Rejects symbolic links and non-regular files
 - ✅ **XSS prevention** - Frontend uses `textContent` instead of `innerHTML`
+- ✅ **Streaming support** - Real-time audio processing via `process_audio_chunk()` API
 
 ---
 
@@ -137,13 +139,17 @@ Current test coverage includes:
 - No user tracking or analytics by default
 - Audio files processed in-memory or via temporary files (not persisted)
 
+### License Changes
+- **v2.0.0+**: MIT License (permissive, allows commercial use)
+- **v1.0.0**: GPL-2.0 (copyleft, legacy version no longer maintained)
+
 ---
 
 ## Version History
 
-- **v2.0.0** (Planned) - Python decoder, major security improvements
-- **v1.0.0** (2025-11-22) - Initial release with multimon-ng wrapper
+- **v2.0.0** (2025-11-24) - Python decoder with streaming support, major security improvements
+- **v1.0.0** (2024-11-22) - Initial release with multimon-ng wrapper (GPL-2.0, no longer maintained)
 
 ---
 
-**Last Updated:** 2025-11-23
+**Last Updated:** 2025-11-24
