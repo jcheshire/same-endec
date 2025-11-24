@@ -1,6 +1,6 @@
 # SAME Encoder/Decoder Web Application
 
-**Version 1.0.0**
+**Version 2.0.0**
 
 Web application for encoding and decoding Emergency Alert System (EAS) messages using the SAME (Specific Area Message Encoding) protocol.
 
@@ -23,7 +23,8 @@ sudo certbot --nginx -d your-domain.com
 That's it! The deployment script will:
 - Install all dependencies (Python, nginx)
 - Set up Python virtual environment with NumPy/SciPy
-- Initialize FIPS county database
+- Initialize FIPS county database (3,143+ counties)
+- Generate static End-of-Message audio
 - Create systemd services that start on boot
 - Configure nginx as a reverse proxy
 
@@ -51,8 +52,9 @@ Access your application at `http://your-server-ip` (or `https://your-domain.com`
 
 ### Decoding
 - **Upload WAV Files** - Decode SAME messages from audio
+- **Streaming Support** - Real-time decoding for microphone input, radio streams, and live audio
 - **Human-Readable Output** - Location names with subdivisions, readable durations, full timestamps
-- **Robust Parsing** - Handles noisy/partial messages gracefully
+- **Robust Parsing** - Handles noisy/partial messages gracefully with DLL timing recovery
 - **FIPS Lookup** - Automatically resolves county codes to names and subdivision descriptions
 
 ### Security
@@ -91,7 +93,7 @@ same-endec/
 
 ## How It Works
 
-### SAME Encoder (Python)
+### SAME Encoder
 - Generates FSK-modulated WAV audio from SAME message strings
 - Uses AFSK with mark frequency 2083.33 Hz and space frequency 1562.5 Hz
 - Encodes at 520.83 baud, outputs 44.1 kHz sample rate WAV
@@ -99,13 +101,12 @@ same-endec/
 - Outputs separate header and EOM files for flexible audio production
 
 ### SAME Decoder
-- FSK demodulation using NumPy/SciPy (no external binaries)
+- FSK demodulation using NumPy/SciPy for signal processing
 - Implements complete SAME protocol stack (preamble detection, byte framing, message extraction)
 - DLL-based timing recovery for accurate bit synchronization
 - Validates WAV files before processing (magic bytes, sample rate, duration limits)
-- Supports streaming decoding for real-time applications
-- Cleans noisy messages and handles partial data
-- Memory-safe with no subprocess execution
+- Streaming API via `process_audio_chunk()` for real-time decoding
+- Cleans noisy messages and handles partial data gracefully
 
 ### Web Frontend (Vanilla JS)
 - Zero external dependencies (no React, Vue, jQuery, etc.)
@@ -144,7 +145,7 @@ same-endec/
 
 **System Packages:**
 - Python 3.8+
-- nginx (optional, for production deployment)
+- nginx (for production deployment)
 
 ### Automated Deployment (Recommended)
 
@@ -494,7 +495,7 @@ Full list of 50+ codes available via `/api/event-codes` endpoint or the Referenc
 **"No SAME message detected"**
 - Audio file doesn't contain valid SAME tones
 - Audio quality too poor (noise, distortion)
-- Wrong sample rate (should be 22050 Hz or higher)
+- Sample rate too low (minimum 8 kHz supported)
 - File is not a WAV file (check with `file <filename>`)
 
 **Partial message warning**
@@ -523,8 +524,8 @@ Full list of 50+ codes available via `/api/event-codes` endpoint or the Referenc
 
 ### Audio Format Details
 - **Encoder Output:** 44,100 Hz, 16-bit PCM WAV, mono
-- **Decoder Input:** 8-48 kHz supported (22,050 Hz default, automatically resampled if needed)
-- **FSK Modulation:** Mark 2083.33 Hz (binary 0), Space 1562.5 Hz (binary 1)
+- **Decoder Input:** 8-48 kHz supported, automatically resampled if needed
+- **FSK Modulation:** Mark 2083.33 Hz (binary 1), Space 1562.5 Hz (binary 0)
 - **Baud Rate:** 520.83 baud (per SAME spec)
 
 ### FIPS Code Format
@@ -565,7 +566,6 @@ No critical or high-severity vulnerabilities found.
 - **Pydantic Validation:** Type-safe request/response models
 - **NumPy/SciPy:** Signal processing for FSK encoding/decoding
 - **SQLite:** FIPS code database (3,143+ counties)
-- **SAME Decoder:** No external binaries, memory-safe FSK demodulation
 - **slowapi:** Rate limiting middleware
 
 ### Frontend (Vanilla JavaScript)
@@ -596,12 +596,12 @@ This is a personal project but suggestions welcome:
 
 ## Development Status & Roadmap
 
-### Current Status
+### Current Status (v2.0.0)
 
 The application is **fully functional** with core SAME encoding/decoding capabilities:
 
 ✅ **Core Features:**
-- SAME message encoding and decoding
+- SAME message encoding and decoding with streaming support
 - County subdivision support with abbreviated labels (NW, N, NE, W, C, E, SW, S, SE)
 - Streamlined county selection interface
 - Smart county search (3,143+ US counties)
@@ -662,6 +662,10 @@ These are planned improvements to enhance UX and add convenience features:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+**Version History:**
+- v2.0.0+ (current): MIT License
+- v1.0.0: GPL-2.0 (legacy, no longer maintained)
 
 Copyright (c) 2025 Josh Cheshire
