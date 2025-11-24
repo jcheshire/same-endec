@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # SAME Encoder/Decoder Deployment Script
-# Handles installation, multimon-ng compilation, and systemd service setup
+# Handles installation and systemd service setup
 #
 
 set -e  # Exit on error
@@ -42,7 +42,7 @@ check_os() {
 
 # Install system dependencies
 install_dependencies() {
-    echo -e "${GREEN}[1/7] Installing system dependencies...${NC}"
+    echo -e "${GREEN}[1/6] Installing system dependencies...${NC}"
 
     sudo apt-get update
 
@@ -51,9 +51,6 @@ install_dependencies() {
             python3 \
             python3-pip \
             python3-venv \
-            build-essential \
-            cmake \
-            libpulse-dev \
             git \
             nginx
     else
@@ -61,9 +58,6 @@ install_dependencies() {
             python3 \
             python3-pip \
             python3-venv \
-            build-essential \
-            cmake \
-            libpulse-dev \
             git
     fi
 
@@ -72,7 +66,7 @@ install_dependencies() {
 
 # Set up Python virtual environment
 setup_venv() {
-    echo -e "${GREEN}[2/7] Setting up Python virtual environment...${NC}"
+    echo -e "${GREEN}[2/6] Setting up Python virtual environment...${NC}"
 
     cd "$PROJECT_DIR/backend"
 
@@ -92,7 +86,7 @@ setup_venv() {
 
 # Initialize FIPS code database
 init_fips_db() {
-    echo -e "${GREEN}[3/7] Initializing FIPS code database...${NC}"
+    echo -e "${GREEN}[3/6] Initializing FIPS code database...${NC}"
 
     cd "$PROJECT_DIR/backend"
 
@@ -111,7 +105,7 @@ init_fips_db() {
 
 # Generate static EOM WAV file
 generate_eom() {
-    echo -e "${GREEN}[3.5/7] Generating static EOM WAV file...${NC}"
+    echo -e "${GREEN}[4/6] Generating static EOM WAV file...${NC}"
 
     cd "$PROJECT_DIR/backend"
 
@@ -128,35 +122,9 @@ generate_eom() {
     echo -e "${GREEN}EOM WAV file ready${NC}"
 }
 
-# Compile multimon-ng
-compile_multimon() {
-    echo -e "${GREEN}[4/7] Compiling multimon-ng decoder...${NC}"
-
-    cd "$PROJECT_DIR/multimon-ng"
-
-    # Clean previous build if exists
-    if [ -d "build" ]; then
-        rm -rf build
-    fi
-
-    mkdir build
-    cd build
-
-    cmake ..
-    make
-
-    # Copy binary to bin directory
-    mkdir -p "$PROJECT_DIR/bin"
-    cp multimon-ng "$PROJECT_DIR/bin/"
-    chmod +x "$PROJECT_DIR/bin/multimon-ng"
-
-    echo -e "${GREEN}multimon-ng compiled successfully${NC}"
-    echo "Binary location: $PROJECT_DIR/bin/multimon-ng"
-}
-
 # Create systemd service for backend
 create_backend_service() {
-    echo -e "${GREEN}[5/7] Creating systemd service for backend...${NC}"
+    echo -e "${GREEN}[5/6] Creating systemd service for backend...${NC}"
 
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}-backend.service"
 
@@ -200,7 +168,7 @@ create_frontend_service() {
         return
     fi
 
-    echo -e "${GREEN}[6/7] Creating systemd service for frontend...${NC}"
+    echo -e "${GREEN}[6/6] Creating systemd service for frontend...${NC}"
 
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}-frontend.service"
 
@@ -239,7 +207,7 @@ configure_nginx() {
         return
     fi
 
-    echo -e "${GREEN}[6/7] Configuring nginx reverse proxy...${NC}"
+    echo -e "${GREEN}[6/6] Configuring nginx reverse proxy...${NC}"
 
     # Update nginx config with correct path
     NGINX_CONF="/etc/nginx/sites-available/${SERVICE_NAME}"
@@ -344,7 +312,7 @@ EOF
 
 # Start services
 start_services() {
-    echo -e "${GREEN}[7/7] Starting services...${NC}"
+    echo -e "${GREEN}Starting services...${NC}"
 
     sudo systemctl start "${SERVICE_NAME}-backend.service"
 
@@ -420,7 +388,6 @@ main() {
     setup_venv
     init_fips_db
     generate_eom
-    compile_multimon
     create_backend_service
     configure_nginx
     create_frontend_service
