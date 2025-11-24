@@ -24,13 +24,31 @@ class PythonSAMEDecoder:
     PREAMBLE_BYTE = 0xAB     # 10101011 binary
     PREAMBLE_COUNT = 16      # Number of preamble bytes
 
+    # Security/Validation Constants
+    MAX_SAMPLE_RATE = 48000      # Maximum acceptable sample rate (Hz)
+    MIN_SAMPLE_RATE = 8000       # Minimum acceptable sample rate (Hz)
+    MAX_DURATION_SECONDS = 300   # Maximum audio duration (5 minutes)
+
     def __init__(self, sample_rate: int = 22050):
         """
         Initialize SAME decoder
 
         Args:
             sample_rate: Audio sample rate in Hz (default 22050, multimon-ng standard)
+
+        Raises:
+            TypeError: If sample_rate is not an integer
+            ValueError: If sample_rate is out of acceptable range
         """
+        # Validate sample rate
+        if not isinstance(sample_rate, int):
+            raise TypeError("sample_rate must be an integer")
+        if sample_rate < self.MIN_SAMPLE_RATE or sample_rate > self.MAX_SAMPLE_RATE:
+            raise ValueError(
+                f"sample_rate must be between {self.MIN_SAMPLE_RATE}-{self.MAX_SAMPLE_RATE} Hz, "
+                f"got {sample_rate}"
+            )
+
         self.sample_rate = sample_rate
 
         # Computed values
@@ -637,13 +655,49 @@ class PythonSAMEDecoder:
                 'end_of_message': bool,
                 'raw_output': str
             }
+
+        Raises:
+            FileNotFoundError: If WAV file doesn't exist
+            ValueError: If file is invalid or parameters exceed limits
         """
+        import os
+
+        # Validate path exists
+        if not os.path.exists(wav_path):
+            raise FileNotFoundError(f"WAV file not found: {wav_path}")
+
+        # Check for symlink (prevent following to sensitive files)
+        if os.path.islink(wav_path):
+            raise ValueError("Symbolic links are not allowed")
+
+        # Ensure it's a regular file
+        if not os.path.isfile(wav_path):
+            raise ValueError("Path must be a regular file")
+
         # Reset state for new file
         self.reset_state()
 
         try:
             # Read WAV file
             sample_rate, audio_data = wavfile.read(wav_path)
+
+            # Validate sample rate
+            if sample_rate > self.MAX_SAMPLE_RATE:
+                raise ValueError(
+                    f"Sample rate {sample_rate} Hz exceeds maximum {self.MAX_SAMPLE_RATE} Hz"
+                )
+            if sample_rate < self.MIN_SAMPLE_RATE:
+                raise ValueError(
+                    f"Sample rate {sample_rate} Hz below minimum {self.MIN_SAMPLE_RATE} Hz"
+                )
+
+            # Validate duration
+            duration_seconds = len(audio_data) / sample_rate
+            if duration_seconds > self.MAX_DURATION_SECONDS:
+                raise ValueError(
+                    f"Audio duration {duration_seconds:.1f}s exceeds maximum "
+                    f"{self.MAX_DURATION_SECONDS}s"
+                )
 
             # Convert to mono if stereo
             if len(audio_data.shape) > 1:
@@ -699,13 +753,20 @@ class PythonSAMEDecoder:
         import tempfile
         import os
 
-        # Write to temp file and decode
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
-            f.write(wav_data)
-            temp_path = f.name
+        # Create temp file with secure permissions from the start
+        old_umask = os.umask(0o077)  # Ensures 0o600 (owner-only read/write)
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
+                temp_path = f.name
+                f.write(wav_data)
+        finally:
+            os.umask(old_umask)
 
         try:
             return self.decode_file(temp_path)
         finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+            try:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+            except OSError as e:
+                logger.error(f"Failed to cleanup temp file {temp_path}: {e}")

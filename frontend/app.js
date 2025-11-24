@@ -108,7 +108,13 @@ function populateEventCodesReference() {
     sortedEntries.forEach(([code, description]) => {
         const item = document.createElement('div');
         item.className = 'event-code-item';
-        item.innerHTML = `<strong>${code}</strong>: ${description}`;
+
+        // Use textContent instead of innerHTML to prevent XSS
+        const strong = document.createElement('strong');
+        strong.textContent = code;
+
+        item.appendChild(strong);
+        item.appendChild(document.createTextNode(': ' + description));
         container.appendChild(item);
     });
 }
