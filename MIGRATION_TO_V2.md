@@ -1,4 +1,4 @@
-# Migration to v2.0.0 - Pure Python Decoder
+# Migration to v2.0.0 - Python Decoder
 
 ## Current Status (2025-11-23)
 
@@ -18,7 +18,7 @@ User wants to eliminate the multimon-ng dependency to:
 - **DLL timing recovery** - matches multimon-ng's proven algorithm
 - **Streaming support** - `process_audio_chunk()` for live audio (mic, radio streams)
 - **L2 state machine** - protocol-aware message parsing
-- **100% test coverage** - all existing tests pass with Python decoder
+- **100% test coverage** - all existing tests pass with decoder
 
 ### Architecture Quality
 - L1 (FSK demodulation): 90%+ protocol-agnostic, could support POCSAG/APRS/RTTY
@@ -28,7 +28,7 @@ User wants to eliminate the multimon-ng dependency to:
 ## Version Decision: v2.0.0
 
 **Rationale:**
-- Major architectural change (C binary → pure Python)
+- Major architectural change (C binary → Python)
 - New capability (streaming support)
 - Different deployment story (no compilation)
 - Signals to users: "This is production-ready, headline feature"
@@ -37,12 +37,12 @@ User wants to eliminate the multimon-ng dependency to:
 
 ### 0. Perform security audit of all code generated in the new decoder modules
 
-Perform a full security focused review of all code generated in our Python decoding module.
+Perform a full security focused review of all code generated in our decoder module.
 
-### 1. Add Compatibility Layer to `python_decoder.py`
+### 1. Add Compatibility Layer to `decoder.py`
 
 ```python
-# Add these methods to PythonSAMEDecoder class:
+# Add these methods to SAMEDecoder class:
 
 def decode(self, wav_file_path: str, use_json: bool = True) -> Dict:
     """Backward compatibility alias for decode_file()"""
@@ -71,19 +71,19 @@ def clean_same_message(message: str) -> str:
 **File: `backend/api.py` (line 21)**
 ```python
 # OLD:
-from decoder import SAMEDecoder
+from decoder import SAMEDecoder  # (old multimon-ng wrapper)
 
 # NEW:
-from python_decoder import PythonSAMEDecoder as SAMEDecoder
+from decoder import SAMEDecoder  # (new Python decoder)
 ```
 
 **File: `backend/test_decoder.py` (line 14)**
 ```python
 # OLD:
-from decoder import SAMEDecoder
+from decoder import SAMEDecoder  # (old multimon-ng wrapper)
 
 # NEW:
-from python_decoder import PythonSAMEDecoder as SAMEDecoder
+from decoder import SAMEDecoder  # (new Python decoder)
 ```
 
 ### 3. Delete Files
@@ -114,7 +114,7 @@ Keep:
 
 **README.md changes:**
 - Section "How It Works" → Remove multimon-ng references
-- Section "SAME Decoder" → Update to "Pure Python SAME Decoder"
+- Section "SAME Decoder" → Update to "SAME Decoder"
 - Section "Troubleshooting" → Remove "multimon-ng binary not found" error
 - Add streaming capabilities to feature list
 - Update deployment prerequisites (remove cmake, build-essential)
@@ -128,7 +128,7 @@ The decoder now supports real-time audio streaming:
 - Live internet radio
 - Software audio loopback
 
-See `backend/python_decoder.py` for `process_audio_chunk()` API.
+See `backend/decoder.py` for `process_audio_chunk()` API.
 ```
 
 ### 6. Test Plan
@@ -147,8 +147,8 @@ curl -X POST http://localhost:8000/api/decode -F "file=@test.wav"
 
 # Test streaming
 python -c "
-from python_decoder import PythonSAMEDecoder
-decoder = PythonSAMEDecoder()
+from decoder import SAMEDecoder
+decoder = SAMEDecoder()
 # Feed chunks...
 "
 ```
@@ -181,7 +181,7 @@ git push -u origin pure-python
 # Tag release
 git checkout main
 git pull
-git tag -a v2.0.0 -m "Release v2.0.0: Pure Python decoder with streaming"
+git tag -a v2.0.0 -m "Release v2.0.0: Python decoder with streaming"
 git push origin v2.0.0
 ```
 
@@ -196,14 +196,14 @@ git push origin v2.0.0
 
 ## Key Files Modified
 
-- `backend/python_decoder.py` - New pure Python decoder (589 lines)
+- `backend/decoder.py` - New Python decoder (589 lines)
 - `backend/DECODER_DEBUG.md` - Implementation notes and future plans
-- `backend/test_decoder.py` - Test suite (uses old decoder.py, needs update)
-- `backend/api.py` - FastAPI app (uses old decoder.py, needs update)
+- `backend/test_decoder.py` - Test suite
+- `backend/api.py` - FastAPI app
 
 ## Interface Differences (Need Compatibility)
 
-| Old `decoder.py` | New `python_decoder.py` | Status |
+| Old `decoder.py` (multimon-ng) | New `decoder.py` (Python) | Status |
 |------------------|------------------------|--------|
 | `decode(path)` | `decode_file(path)` | ⚠️ Add alias |
 | `decode_bytes(data)` | `decode_bytes(data)` | ✅ Compatible |

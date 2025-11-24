@@ -22,7 +22,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from encoder import SAMEEncoder, build_same_message
-from python_decoder import PythonSAMEDecoder as SAMEDecoder
+from decoder import SAMEDecoder
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

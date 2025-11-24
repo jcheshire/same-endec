@@ -11,7 +11,7 @@ The migration to pure Python decoder significantly improved security posture:
 ### Major Attack Surface Reduction
 - ✅ **Eliminated subprocess execution** - Removed multimon-ng C binary dependency
 - ✅ **Memory safety** - Python/NumPy managed memory vs. manual C memory management
-- ✅ **Code auditability** - Pure Python is easier to audit than C code
+- ✅ **Code auditability** - Python decoder is easier to audit than C code
 
 ### Security Fixes Applied
 - ✅ **Secure temporary files** - Created with 0o600 permissions (owner-only access)
@@ -141,7 +141,7 @@ Current test coverage includes:
 
 ## Version History
 
-- **v2.0.0** (Planned) - Pure Python decoder, major security improvements
+- **v2.0.0** (Planned) - Python decoder, major security improvements
 - **v1.0.0** (2025-11-22) - Initial release with multimon-ng wrapper
 
 ---

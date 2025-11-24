@@ -71,7 +71,7 @@ Access your application at `http://your-server-ip` (or `https://your-domain.com`
 same-endec/
 ├── backend/
 │   ├── encoder.py          # SAME protocol encoder
-│   ├── python_decoder.py   # Pure Python SAME decoder (FSK demodulation)
+│   ├── decoder.py          # SAME decoder (FSK demodulation)
 │   ├── api.py              # FastAPI web server
 │   ├── init_fips_db.py     # FIPS database initialization
 │   ├── generate_eom.py     # Static EOM WAV generator
@@ -98,8 +98,8 @@ same-endec/
 - Transmits header 3 times with preamble per SAME protocol spec
 - Outputs separate header and EOM files for flexible audio production
 
-### SAME Decoder (Pure Python)
-- Pure Python FSK demodulation using NumPy/SciPy (no external binaries)
+### SAME Decoder
+- FSK demodulation using NumPy/SciPy (no external binaries)
 - Implements complete SAME protocol stack (preamble detection, byte framing, message extraction)
 - DLL-based timing recovery for accurate bit synchronization
 - Validates WAV files before processing (magic bytes, sample rate, duration limits)
@@ -565,7 +565,7 @@ No critical or high-severity vulnerabilities found.
 - **Pydantic Validation:** Type-safe request/response models
 - **NumPy/SciPy:** Signal processing for FSK encoding/decoding
 - **SQLite:** FIPS code database (3,143+ counties)
-- **Pure Python Decoder:** No external binaries, memory-safe FSK demodulation
+- **SAME Decoder:** No external binaries, memory-safe FSK demodulation
 - **slowapi:** Rate limiting middleware
 
 ### Frontend (Vanilla JavaScript)

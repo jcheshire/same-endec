@@ -107,11 +107,9 @@ But our Python decoder demodulates ~3190 bits and never finds the 0xAB preamble 
 
 ## Files
 
-- `backend/python_decoder.py` - Pure Python decoder implementation
-- `backend/decoder.py` - Original multimon-ng wrapper (working)
+- `backend/decoder.py` - Python decoder implementation
 - `backend/encoder.py` - SAME encoder (working, creates valid output)
 - `backend/test_decoder.py` - Test suite (17 tests)
-- `bin/multimon-ng` - Compiled C decoder (working baseline)
 
 ## Test Command
 
@@ -125,13 +123,10 @@ encoder = SAMEEncoder()
 encoder.encode('ZCZC-WXR-TOR-024031+0030-3191423-PHILLYWX-', 'test.wav', include_eom=False)
 "
 
-# Test with multimon-ng (works)
-../bin/multimon-ng -a EAS -t wav --json test.wav
-
-# Test with Python decoder (doesn't work yet)
+# Test with Python decoder
 ./venv/bin/python -c "
-from python_decoder import PythonSAMEDecoder
-decoder = PythonSAMEDecoder()
+from decoder import SAMEDecoder
+decoder = SAMEDecoder()
 result = decoder.decode_file('test.wav')
 print(result)
 "
@@ -236,4 +231,4 @@ aprs = DigitalModeDecoder(
 - Single codebase for multiple protocols
 - Shared DLL/correlation optimizations
 - Streaming works for all protocols
-- Pure Python (no external dependencies)
+- Python implementation (no external dependencies)

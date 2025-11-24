@@ -1,8 +1,7 @@
 """
-Pure Python SAME (Specific Area Message Encoding) Decoder
+SAME (Specific Area Message Encoding) Decoder
 
 FSK demodulator for EAS messages with streaming support.
-No external dependencies beyond NumPy/SciPy.
 
 SPDX-License-Identifier: MIT
 Copyright (c) 2025 Josh Cheshire
@@ -17,8 +16,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class PythonSAMEDecoder:
-    """Pure Python SAME/EAS decoder with streaming support"""
+class SAMEDecoder:
+    """SAME/EAS decoder with streaming support"""
 
     # SAME Protocol Constants
     MARK_FREQ = 2083.33      # Binary 1 (Hz)

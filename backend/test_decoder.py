@@ -1,9 +1,6 @@
 """
 Test suite for SAME decoder
 
-Tests both the current multimon-ng decoder and will be used to verify
-the pure Python decoder implementation.
-
 SPDX-License-Identifier: MIT
 Copyright (c) 2025 Josh Cheshire
 """
@@ -14,7 +11,7 @@ import tempfile
 import json
 from pathlib import Path
 from encoder import SAMEEncoder
-from python_decoder import PythonSAMEDecoder as SAMEDecoder
+from decoder import SAMEDecoder
 
 
 class TestSAMEDecoder(unittest.TestCase):
