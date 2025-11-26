@@ -30,37 +30,37 @@ class TestSAMEDecoder(unittest.TestCase):
         cls.test_cases = [
             (
                 "tornado_warning.wav",
-                "ZCZC-WXR-TOR-024031+0030-3191423-PHILLYWX-",
+                "ZCZC-WXR-TOR-024031+0030-3191423-SAMEENDC-",
                 "Tornado Warning for Montgomery County, MD"
             ),
             (
                 "severe_thunderstorm.wav",
-                "ZCZC-WXR-SVR-024031-024033+0100-3191500-PHILLYWX-",
+                "ZCZC-WXR-SVR-024031-024033+0100-3191500-SAMEENDC-",
                 "Severe Thunderstorm Warning for multiple counties"
             ),
             (
                 "flash_flood.wav",
-                "ZCZC-WXR-FFW-024031+0045-3191600-PHILLYWX-",
+                "ZCZC-WXR-FFW-024031+0045-3191600-SAMEENDC-",
                 "Flash Flood Warning"
             ),
             (
                 "test_weekly.wav",
-                "ZCZC-WXR-RWT-024031+0015-3191700-PHILLYWX-",
+                "ZCZC-WXR-RWT-024031+0015-3191700-SAMEENDC-",
                 "Required Weekly Test"
             ),
             (
                 "multiple_locations.wav",
-                "ZCZC-WXR-TOR-024031-024033-024017-051013-051059+0030-3191800-PHILLYWX-",
+                "ZCZC-WXR-TOR-024031-024033-024017-051013-051059+0030-3191800-SAMEENDC-",
                 "Tornado Warning for 5 counties"
             ),
             (
                 "subdivision_northwest.wav",
-                "ZCZC-WXR-TOR-124031+0030-3191900-PHILLYWX-",
+                "ZCZC-WXR-TOR-124031+0030-3191900-SAMEENDC-",
                 "Tornado Warning for Northwest Montgomery County"
             ),
             (
                 "long_duration.wav",
-                "ZCZC-WXR-EVI-024031+0800-3192000-PHILLYWX-",
+                "ZCZC-WXR-EVI-024031+0800-3192000-SAMEENDC-",
                 "Evacuation Immediate - 8 hour duration"
             ),
         ]
@@ -125,7 +125,7 @@ class TestSAMEDecoder(unittest.TestCase):
 
     def test_parse_same_message_basic(self):
         """Test parsing a basic SAME message string"""
-        message = "WXR-TOR-024031+0030-3191423-PHILLYWX-"
+        message = "WXR-TOR-024031+0030-3191423-SAMEENDC-"
         parsed = self.decoder.parse_same_message(message)
 
         self.assertEqual(parsed['org'], 'WXR')
@@ -133,12 +133,12 @@ class TestSAMEDecoder(unittest.TestCase):
         self.assertEqual(parsed['locations'], ['024031'])
         self.assertEqual(parsed['duration'], '+0030')
         self.assertEqual(parsed['timestamp'], '3191423')
-        self.assertEqual(parsed['originator'], 'PHILLYWX')
+        self.assertEqual(parsed['originator'], 'SAMEENDC')
         self.assertFalse(parsed['partial'])
 
     def test_parse_same_message_multiple_locations(self):
         """Test parsing SAME message with multiple locations"""
-        message = "WXR-TOR-024031-024033-024017+0030-3191423-PHILLYWX-"
+        message = "WXR-TOR-024031-024033-024017+0030-3191423-SAMEENDC-"
         parsed = self.decoder.parse_same_message(message)
 
         self.assertEqual(len(parsed['locations']), 3)
@@ -149,7 +149,7 @@ class TestSAMEDecoder(unittest.TestCase):
     def test_parse_same_message_concatenated_location_duration(self):
         """Test parsing when location and duration are concatenated"""
         # Some decoders might output "039039+0030" instead of "039039-+0030"
-        message = "WXR-TOR-024031+0030-3191423-PHILLYWX-"
+        message = "WXR-TOR-024031+0030-3191423-SAMEENDC-"
         parsed = self.decoder.parse_same_message(message)
 
         self.assertEqual(parsed['locations'], ['024031'])
@@ -157,7 +157,7 @@ class TestSAMEDecoder(unittest.TestCase):
 
     def test_clean_same_message(self):
         """Test message cleaning removes noise"""
-        noisy_message = "WXR-TOR-024031+0030-3191423-PHILLYWX-\x00\x01"
+        noisy_message = "WXR-TOR-024031+0030-3191423-SAMEENDC-\x00\x01"
         cleaned = self.decoder.clean_same_message(noisy_message)
 
         self.assertNotIn('\x00', cleaned)
@@ -214,7 +214,7 @@ class TestSAMEDecoder(unittest.TestCase):
         ]
 
         for duration, description in test_cases:
-            message = f"WXR-TOR-024031{duration}-3191423-PHILLYWX-"
+            message = f"WXR-TOR-024031{duration}-3191423-SAMEENDC-"
             parsed = self.decoder.parse_same_message(message)
             self.assertEqual(parsed['duration'], duration,
                            f"Should parse {description} duration")

@@ -106,7 +106,7 @@ class EncodeRequest(BaseModel):
     duration: str = Field(..., pattern=r'^\+\d{4}$', description="Duration in +HHMM format (e.g., +0030)")
     timestamp: Optional[str] = Field(None, pattern=r'^\d{7}$', description="Optional JJJHHMM timestamp")
     originator: Optional[str] = Field(None, min_length=3, max_length=3, description="Originator code (WXR, CIV, PEP, EAS) - auto-determined if not provided")
-    callsign: Optional[str] = Field(None, min_length=1, max_length=8, description="Station callsign/identifier (e.g., PHILLYWX)")
+    callsign: Optional[str] = Field(None, min_length=1, max_length=8, description="Station callsign/identifier (e.g., SAMEENDC)")
 
     class Config:
         json_schema_extra = {
@@ -167,7 +167,7 @@ async def encode_message(request: Request, encode_request: EncodeRequest):
             location_codes=encode_request.location_codes,
             duration=encode_request.duration,
             timestamp=encode_request.timestamp,
-            originator=encode_request.callsign or "PHILLYWX"  # Use callsign field, default to PHILLYWX
+            originator=encode_request.callsign or "SAMEENDC"  # Use callsign field, default to SAMEENDC
         )
 
         # Encode to WAV bytes (header only, no EOM)
@@ -244,7 +244,7 @@ async def encode_preview(request: Request, encode_request: EncodeRequest):
             location_codes=encode_request.location_codes,
             duration=encode_request.duration,
             timestamp=encode_request.timestamp,
-            originator=encode_request.callsign or "PHILLYWX"  # Use callsign field, default to PHILLYWX
+            originator=encode_request.callsign or "SAMEENDC"  # Use callsign field, default to SAMEENDC
         )
 
         return MessageResponse(

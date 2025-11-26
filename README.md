@@ -43,7 +43,7 @@ Access your application at `http://your-server-ip` (or `https://your-domain.com`
   - **Visual distinction:** Blue tags for whole counties, amber tags for subdivisions
 - **Smart County Search** - Search 3,143+ US counties by name or FIPS code with autocomplete
 - **Duration Dropdown** - Pre-populated time increments (15-min up to 1hr, 30-min beyond) prevent format errors
-- **Callsign Field** - Optional station identifier (defaults to PHILLYWX if empty)
+- **Callsign Field** - Optional station identifier (defaults to SAMEENDC if empty)
 - **Raw Encoding** - Encode custom SAME strings directly for advanced users
 - **Automatic Preview** - SAME message string displayed with encoded audio
 - **Unique Filenames** - Downloads timestamped WAV files (e.g., same_TOR_20241121_143022.wav)
@@ -316,7 +316,7 @@ export PORT="8000"
 4. Search and select counties (e.g., "Montgomery, MD")
    - For subdivisions: Select county, then choose specific regions (NW, N, NE, etc.) or whole county
 5. Set duration (e.g., "30 minutes")
-6. Optionally enter callsign (defaults to PHILLYWX)
+6. Optionally enter callsign (defaults to SAMEENDC)
 7. Click **Encode to WAV**
 8. View the encoded message string and download **Header** and **EOM** audio files
 
@@ -610,14 +610,14 @@ The application is **fully functional** with core SAME encoding/decoding capabil
 - Security hardening (XSS, SQL injection, rate limiting, etc.)
 - Unique timestamped WAV filenames
 - Separate reference documentation page
-- Optional callsign field with automatic PHILLYWX default
+- Optional callsign field with automatic SAMEENDC default
 
 ### Feature Requests & Future Enhancements
 
 These are planned improvements to enhance UX and add convenience features:
 
 **User Experience:**
-1. **Update raw SAME encode placeholder** - Include PHILLYWX in the example string instead of SCIENCE
+1. **Update raw SAME encode placeholder** - Include SAMEENDC in the example string instead of SCIENCE
 2. **Better visual indicators** - Show selected subdivisions more clearly, possibly with interactive county map
 3. **Enhanced toast notifications** - Improve styling, positioning, and animation
 

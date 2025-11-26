@@ -43,7 +43,7 @@ The pure Python SAME decoder is now fully functional with streaming support!
 The encoder creates valid FSK audio that multimon-ng successfully decodes:
 ```bash
 ../bin/multimon-ng -a EAS -t wav --json test.wav
-# Returns: {"demod_name":"EAS","header_begin":"ZCZC","last_message":"-WXR-TOR-024031+0030-3191423-PHILLYWX-"}
+# Returns: {"demod_name":"EAS","header_begin":"ZCZC","last_message":"-WXR-TOR-024031+0030-3191423-SAMEENDC-"}
 ```
 
 But our Python decoder demodulates ~3190 bits and never finds the 0xAB preamble byte.
@@ -120,7 +120,7 @@ cd backend
 ./venv/bin/python -c "
 from encoder import SAMEEncoder
 encoder = SAMEEncoder()
-encoder.encode('ZCZC-WXR-TOR-024031+0030-3191423-PHILLYWX-', 'test.wav', include_eom=False)
+encoder.encode('ZCZC-WXR-TOR-024031+0030-3191423-SAMEENDC-', 'test.wav', include_eom=False)
 "
 
 # Test with Python decoder

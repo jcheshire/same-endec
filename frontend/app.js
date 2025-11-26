@@ -155,7 +155,7 @@ async function handleEncode(e) {
         originator: document.getElementById('originator').value,
         location_codes: locationCodesValue.split(',').map(s => s.trim()).filter(s => s.length > 0),
         duration: document.getElementById('duration').value,
-        callsign: callsignValue || 'PHILLYWX'
+        callsign: callsignValue || 'SAMEENDC'
     };
 
     try {
